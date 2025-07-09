@@ -1,0 +1,411 @@
+# Development Documentation (contains sensitive IP protection details)
+dev-docs/
+
+# Project-specific documentation to ignore
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions and Cython
+*.so
+*.dylib
+*.dll
+*.c
+*.cpp
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+.ropeproject
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Swift and Xcode
+.build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.xcworkspace
+!default.xcworkspace
+*.playground
+timeline.xctimeline
+playgrounds/
+
+# Swift Package Manager
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/
+
+# SourceKit-LSP
+.sourcekit-lsp/
+.indexstore/
+compile_commands.json
+.compile_commands.json
+
+# MCP Server specific
+.mcp/
+mcp-server.log
+mcp-server.pid
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+.~*
+
+# Security and secrets
+.env.*
+!.env.example
+.secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+credentials.json
+secrets.json
+config.secret.*
+
+# Test artifacts
+test-results/
+test-reports/
+*.test.swift
+test_*.py
+!test/
+!test/**/*.py
+
+# Documentation build outputs
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+!examples/*.ipynb
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# ruff
+.ruff_cache/
+
+# Serena project files
+.serena/
+
+# Local configuration
+local_config/
+*.local
+*.local.*
+
+# Performance profiling
+*.prof
+*.lprof
+*.pstats
+callgrind.out.*
+
+# Memory profiling
+*.hprof
+*.heap
+
+# Crash dumps
+core
+core.*
+*.dmp
+
+# Package locks (keep for reproducibility)
+!Pipfile.lock
+!poetry.lock
+!requirements.txt
+!requirements-*.txt
+
+# CI/CD
+.github/workflows/local/
+.gitlab-ci-local/
+.circleci/local/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+!test/fixtures/**/*.zip
+
+# Binary files
+*.bin
+*.dat
+!test/fixtures/**/*.bin
+
+# Generated files
+generated/
+gen/
+out/
+output/
+
+# Cache directories
+.cache/
+*.cache/
+__pycache__/
+
+# Workspace files
+*.code-workspace
+workspace.xml
+
+# Personal notes
+notes/
+TODO.md
+NOTES.md
+personal/
+
+# Benchmarks
+benchmarks/results/
+*.bench
+
+# Security scan results
+security-scan-results/
+vulnerability-report.*
+
+# License files to keep
+!LICENSE
+!LICENSE.md
+!LICENSE.txt
+!NOTICE
+
+# Keep important markdown files
+!README.md
+!CONTRIBUTING.md
+!CHANGELOG.md
+!CODE_OF_CONDUCT.md
+!FEATURE_MATRIX.md
+
+# Keep configuration examples
+!*.example
+!examples/
+
+# Keep GitHub templates
+!.github/
+!.github/**/*
+
+# Keep test fixtures
+!test/fixtures/
+!test/fixtures/**/*
+
+# Temporary verification scripts
+test_swiftlens_core_verification.py
+verify_*.py
+check_*.py
+
+# Local development scripts
+local_*.sh
+local_*.py
+dev_*.sh
+dev_*.py
+!dev-scripts/
+
+# Compiled Python optimizations
+*.pyo
+*.pyc
+__pycache__/
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+pdm.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# mkdocs
+site/
+
+# Cython debug symbols
+cython_debug/
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Editor backup files
+*~
+.*.swp
+.*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
