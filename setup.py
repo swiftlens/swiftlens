@@ -41,12 +41,12 @@ def main():
     setup(
         name="swiftlens",
         version=version["__version__"],
-        description="Professional Swift code analysis MCP server with enhanced AI capabilities",
+        description="Professional Swift code semantic analysis MCP server with enhanced AI capabilities",
         long_description=long_description,
         long_description_content_type="text/markdown",
-        author="SwiftLens Pro",
-        author_email="support@swiftlens.pro",
-        url="https://github.com/swiftlens/swiftlens-pro",
+        author="SwiftLens Devs",
+        author_email="devs@swiftlens.tools",
+        url="https://github.com/swiftlens/swiftlens",
         # Package configuration
         packages=find_packages(include=["src*"]),
         # Include static files for dashboard

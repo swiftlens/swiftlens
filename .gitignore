@@ -286,6 +286,9 @@ TODO.md
 NOTES.md
 personal/
 
+# Deployment scripts
+deployment/
+
 # Benchmarks
 benchmarks/results/
 *.bench
