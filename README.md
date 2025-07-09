@@ -35,12 +35,24 @@ AI Agent (Claude/GPT) → MCP Protocol → SwiftLens → SourceKit-LSP → Swift
 - **Python 3.10+**
 - **Xcode** (full installation from App Store, not just Command Line Tools)
 
-### Install via pip
+### Quick Start
 
 ```bash
-# Install from PyPI
-pip install swiftlens
+# Install from TestPyPI (current release)
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ swiftlens
 ```
+
+### First Time Running?
+
+SwiftLens automatically installs its required `swiftlens-core` dependency on first run. If you see:
+
+```
+📦 swiftlens-core not found. Installing from TestPyPI...
+✅ swiftlens-core installed successfully
+⚠️  Please restart the MCP server for changes to take effect
+```
+
+Simply restart the MCP server and everything will work seamlessly.
 
 ### Configure for Claude Desktop
 
@@ -63,6 +75,8 @@ Add to your Claude Desktop configuration:
   }
 }
 ```
+
+Note: The `--index-url` and `--extra-index-url` arguments ensure SwiftLens is installed from TestPyPI with its dependencies.
 
 ## Usage
 

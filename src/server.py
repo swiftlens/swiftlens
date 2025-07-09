@@ -6,11 +6,44 @@ Provides semantic Swift code understanding tools for AI models
 
 import atexit
 import os
+import sys
 
+# Check for swiftlens-core dependency before other imports
+try:
+    import lsp
+
+    _ = lsp  # Keep import to verify it worked
+except ImportError:
+    print("📦 swiftlens-core not found. Installing from TestPyPI...")
+    import subprocess
+
+    try:
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                "https://test.pypi.org/simple/",
+                "swiftlens-core",
+            ]
+        )
+        print("✅ swiftlens-core installed successfully")
+        # After installation, we need to restart to properly load the module
+        print("⚠️  Please restart the MCP server for changes to take effect")
+        sys.exit(0)
+    except Exception as e:
+        print(f"❌ Failed to install swiftlens-core: {e}")
+        print("\nPlease install manually:")
+        print("pip install --index-url https://test.pypi.org/simple/ swiftlens-core")
+        sys.exit(1)
+
+# Import LSP functionality
 from lsp.client_manager import cleanup_manager, get_manager
 from mcp.server import FastMCP
 
-# Use absolute imports for Cython compatibility
+# Use absolute imports for other modules
 from src.dashboard.logger import log_tool_execution
 from src.dashboard.web_server import start_dashboard_server, stop_dashboard_server
 from src.utils.validation import (
@@ -24,7 +57,7 @@ from src.utils.validation import (
 atexit.register(cleanup_manager)
 atexit.register(stop_dashboard_server)
 
-# Initialize the manager early
+# Initialize the manager early if available
 _lsp_manager = get_manager()
 
 # Create the FastMCP server with instructions
