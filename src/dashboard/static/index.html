@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swift Context MCP Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1><i class="fas fa-code"></i> Swift Context MCP Dashboard</h1>
+                <div class="header-controls">
+                    <div class="status-indicator" id="connectionStatus">
+                        <i class="fas fa-circle"></i>
+                        <span>Connecting...</span>
+                    </div>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="shutdown-btn" id="shutdownBtn" title="Shutdown server">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Statistics Cards -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalCalls">-</h3>
+                            <p>Total Tool Calls</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="activeSessions">-</h3>
+                            <p>Active Sessions</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="successRate">-</h3>
+                            <p>Success Rate</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="connectedClients">-</h3>
+                            <p>Connected Clients</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Controls and Filters -->
+            <section class="controls-section">
+                <div class="controls-grid">
+                    <div class="filter-group">
+                        <label for="toolFilter">Filter by Tool:</label>
+                        <select id="toolFilter">
+                            <option value="">All Tools</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sessionFilter">Filter by Session:</label>
+                        <select id="sessionFilter">
+                            <option value="">All Sessions</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="statusFilter">Filter by Status:</label>
+                        <select id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="success">Success</option>
+                            <option value="error">Error</option>
+                            <option value="in_progress">In Progress</option>
+                        </select>
+                    </div>
+                    <div class="action-group">
+                        <button class="btn btn-primary" id="refreshBtn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn btn-secondary" id="exportBtn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn btn-secondary" id="clearBtn">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tabs -->
+            <section class="tabs-section">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="logs">
+                        <i class="fas fa-list"></i> Live Logs
+                    </button>
+                    <button class="tab-btn" data-tab="statistics">
+                        <i class="fas fa-chart-bar"></i> Statistics
+                    </button>
+                    <button class="tab-btn" data-tab="sessions">
+                        <i class="fas fa-users"></i> Sessions
+                    </button>
+                </div>
+            </section>
+
+            <!-- Tab Content -->
+            <section class="content-section">
+                <!-- Logs Tab -->
+                <div class="tab-content active" id="logsTab">
+                    <div class="logs-container">
+                        <div class="logs-header">
+                            <h3><i class="fas fa-stream"></i> Real-time Tool Execution Logs</h3>
+                            <div class="logs-controls">
+                                <label class="auto-scroll-toggle">
+                                    <input type="checkbox" id="autoScroll" checked>
+                                    Auto-scroll
+                                </label>
+                                <span class="log-count">Showing <span id="logCount">0</span> logs</span>
+                            </div>
+                        </div>
+                        <div class="logs-list" id="logsList">
+                            <div class="empty-state">
+                                <i class="fas fa-stream"></i>
+                                <p>Waiting for tool executions...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Tab -->
+                <div class="tab-content" id="statisticsTab">
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-pie"></i> Tool Usage Distribution</h3>
+                            <div class="chart-content" id="toolUsageChart">
+                                <div class="empty-state">
+                                    <i class="fas fa-chart-pie"></i>
+                                    <p>No data available</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-line"></i> Execution Status</h3>
+                            <div class="chart-content" id="statusChart">
+                                <div class="empty-state">
+                                    <i class="fas fa-chart-line"></i>
+                                    <p>No data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sessions Tab -->
+                <div class="tab-content" id="sessionsTab">
+                    <div class="sessions-container">
+                        <h3><i class="fas fa-users"></i> Client Sessions</h3>
+                        <div class="sessions-list" id="sessionsList">
+                            <div class="empty-state">
+                                <i class="fas fa-users"></i>
+                                <p>No active sessions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="logDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Log Details</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="logDetailContent">
+                <!-- Log details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

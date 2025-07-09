@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "Cython>=3.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+[tool.ruff]
+# Set the maximum line length to 100.
+line-length = 100
+
+# Assume Python 3.10+
+target-version = "py310"
+
+[tool.ruff.lint]
+# Enable pycodestyle (E) and Pyflakes (F) codes by default.
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+
+# Allow unused variables when underscore-prefixed.
+ignore = [
+    "E501",  # line too long, handled by black
+    "E402",  # module level import not at top of file (needed for path setup in tests)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "lsp: marks tests that require SourceKit-LSP environment (full Xcode installation)",
+    "lsp_comprehensive: marks tests requiring built Swift environment with IndexStoreDB",
+    "malformed: marks tests that use malformed Swift code (slow, excluded by default)",
+    "slow: marks tests that are inherently slow (concurrent, performance, cross-file resolution)",
+    "asyncio: marks tests that use asyncio"
+]
+addopts = [
+    "--tb=short",
+    "--strict-markers",
+    "-v"
+]
+filterwarnings = [
+    # Suppress websockets deprecation warnings
+    "ignore:websockets.legacy is deprecated:DeprecationWarning",
+    "ignore:websockets.server.WebSocketServerProtocol is deprecated:DeprecationWarning",
+    # Suppress AsyncMock runtime warnings about unawaited coroutines
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
+    # Suppress tracemalloc warnings about object allocation
+    "ignore:Enable tracemalloc to get.*:RuntimeWarning",
+    # Suppress general async mock warnings  
+    "ignore:.*AsyncMockMixin._execute_mock_call.*was never awaited:RuntimeWarning",
+    # Suppress pytest thread exception warnings from port conflicts in tests
+    "ignore:Exception in thread.*:pytest.PytestUnhandledThreadExceptionWarning"
+]
