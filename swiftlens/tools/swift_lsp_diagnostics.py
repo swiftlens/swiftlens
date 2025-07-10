@@ -307,9 +307,7 @@ def _check_project_setup(project_path: str) -> dict[str, Any]:
 
     # Check for index store with detailed diagnostics
     index_paths = [
-        path / ".build" / "debug" / "index" / "store",
-        path / ".build" / "release" / "index" / "store",
-        path / "DerivedData",
+        path / ".build" / "index" / "store",
     ]
 
     for index_path in index_paths:

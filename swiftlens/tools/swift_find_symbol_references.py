@@ -94,9 +94,7 @@ def swift_find_symbol_references(file_path: str, symbol_name: str, client=None) 
                 index_diagnostics = []
                 if project_root:
                     index_paths = [
-                        os.path.join(project_root, ".build", "debug", "index", "store"),
-                        os.path.join(project_root, ".build", "release", "index", "store"),
-                        os.path.join(project_root, "DerivedData"),
+                        os.path.join(project_root, ".build", "index", "store"),
                     ]
 
                     index_found = False

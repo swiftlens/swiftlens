@@ -159,7 +159,7 @@ SwiftLens includes a web dashboard for monitoring AI interactions:
 Rebuild your index:
 
 ```bash
-swift build -Xswiftc -index-store-path -Xswiftc .build/debug/index
+swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 ```
 
 ### New files not recognized
@@ -167,7 +167,7 @@ swift build -Xswiftc -index-store-path -Xswiftc .build/debug/index
 New files need to be indexed:
 
 ```bash
-swift build -Xswiftc -index-store-path -Xswiftc .build/debug/index
+swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 ```
 
 ### SourceKit-LSP not found
