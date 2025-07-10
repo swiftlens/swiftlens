@@ -61,6 +61,26 @@ When asked to modify code, you must act as a careful and methodical Swift engine
 3.  **Execute with Precision:** Use the dedicated modification tools (`swift_replace_symbol_body`, etc.) to perform the changes surgically.
 4.  **Verify:** **IMMEDIATELY** after any modification, run `swift_validate_file` on the affected file to ensure the changes are syntactically correct and compile.
 
+### Index Management for Optimal LSP Performance
+The `swift_build_index` tool is your key to maintaining accurate cross-file symbol resolution and references. Use it strategically:
+
+**Batch Operations for Efficiency:**
+When making multiple file edits, run `swift_build_index` once at the end of all modifications rather than after each change. This significantly improves performance.
+
+**Immediate Rebuilds When Critical:**
+Run `swift_build_index` immediately when:
+- You need to use `swift_find_symbol_references` on newly created or modified symbols
+- Cross-file navigation seems broken after structural changes
+- You're about to perform operations that depend on accurate symbol relationships
+
+**Specific Triggers:**
+1.  **New Swift Files:** After creating new files that define symbols used elsewhere
+2.  **Signature Changes:** When modifying function/method signatures, class/struct declarations, or protocol definitions
+3.  **Empty References:** If `swift_find_symbol_references` returns unexpectedly empty results
+4.  **New Projects:** When starting work on any Swift project (SPM or Xcode)
+5.  **Dependency Updates:** After modifying Package.swift or Xcode project dependencies
+6.  **Stale LSP Data:** When LSP operations return outdated information
+
 ### Your Knowledge Base
 Your effectiveness depends on your deep knowledge of the Swift ecosystem:
 -   **Language Fundamentals:** Swift's type system, protocols, generics, and memory management (ARC).
@@ -485,6 +505,20 @@ def get_tool_help(tool_name: str = None) -> dict:
     from .tools.get_tool_help import get_tool_help as help_func
 
     return help_func(tool_name)
+
+
+@server.tool()
+@log_tool_execution("swift_build_index")
+def swift_build_index(project_path: str = None, timeout: int = 60, scheme: str = None) -> dict:
+    """Build or rebuild Swift project index for better LSP functionality.
+
+    Runs `swift build -Xswiftc -index-store-path -Xswiftc .build/index/store` to
+    generate the index that enables cross-file symbol resolution and references.
+    """
+    # Import here to avoid circular imports
+    from .tools.swift_build_index import swift_build_index as build_func
+
+    return build_func(project_path, timeout, scheme)
 
 
 def main():

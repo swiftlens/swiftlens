@@ -267,6 +267,32 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "swift_lsp_diagnostics('/path/to/project') -> project-specific diagnostics",
             ],
         },
+        "swift_build_index": {
+            "purpose": "Build or rebuild Swift project index for better LSP functionality",
+            "use_cases": [
+                "Fix stale symbol references after code changes",
+                "Enable cross-file navigation in new projects",
+                "Update index after adding/modifying Swift files",
+                "Resolve empty reference results from LSP",
+                "Refresh index after dependency updates",
+            ],
+            "parameters": {
+                "project_path": "Path to Swift project (optional, defaults to current directory)",
+                "timeout": "Build timeout in seconds (default 60, max 300)",
+                "scheme": "For Xcode projects, specific scheme to build (optional, auto-detected if not provided)",
+            },
+            "output_format": {
+                "status": "Build success/failure",
+                "index_path": "Location of generated index",
+                "build_output": "Swift build command output",
+                "project_type": "Detected project type (SPM or Xcode)",
+            },
+            "examples": [
+                "swift_build_index() -> builds index in current directory",
+                "swift_build_index('/path/to/project', 120) -> builds with 2-minute timeout",
+                "swift_build_index('/path/to/project', 60, 'MyApp') -> builds Xcode project with specific scheme",
+            ],
+        },
     }
 
     # Build available_tools list

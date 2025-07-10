@@ -88,6 +88,7 @@ class ErrorType(str, Enum):
     INVALID_PARAMETERS = "invalid_parameters"
     COMPILATION_ERROR = "compilation_error"
     TOOL_INTERNAL_ERROR = "tool_internal_error"
+    BUILD_ERROR = "build_error"  # For swift build failures
 
     # --- Legacy/Compatibility ---
     LSP_ERROR = "lsp_error"  # Deprecated: use specific LSP error types
@@ -436,5 +437,20 @@ class ToolHelpResponse(BaseModel):
     tool_name: str | None = Field(default=None, description="Specific tool name if requested")
     tools: list[ToolHelpInfo] | ToolHelpInfo = Field(description="Tool help information")
     available_tools: list[str] = Field(description="List of all available tool names")
+    error: str | None = Field(default=None, description="Error message if failed")
+    error_type: ErrorType | None = Field(default=None, description="Error category")
+
+
+class BuildIndexResponse(BaseModel):
+    """Response for swift_build_index tool."""
+
+    success: bool = Field(description="Operation success status")
+    project_path: str = Field(description="Path to the Swift project")
+    index_path: str | None = Field(default=None, description="Path to generated index store")
+    build_output: str | None = Field(default=None, description="Build command output")
+    build_time: float | None = Field(default=None, description="Build duration in seconds")
+    project_type: str | None = Field(
+        default=None, description="Detected project type (spm or xcode)"
+    )
     error: str | None = Field(default=None, description="Error message if failed")
     error_type: ErrorType | None = Field(default=None, description="Error category")
