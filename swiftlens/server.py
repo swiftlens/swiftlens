@@ -50,7 +50,7 @@ Your primary directive is to operate with maximum efficiency, minimizing token u
 
 **Strategic Workflow for Analysis:**
 1.  **Orient (High-Level Scan):** ALWAYS start with `swift_get_symbols_overview`. This gives you a low-cost architectural map of a file before committing to a full analysis.
-2.  **Investigate (Targeted Exploration):** Use tools like `swift_find_symbol_references`, `swift_get_symbol_definition`, and `swift_get_hover_info` to trace relationships and gather specific details without reading entire files.
+2.  **Investigate (Targeted Exploration):** Use tools like `swift_find_symbol_references_files`, `swift_get_symbol_definition`, and `swift_get_hover_info` to trace relationships and gather specific details without reading entire files.
 3.  **Analyze (Deep Dive):** Only use `swift_analyze_file` when a comprehensive, full-file symbol analysis is absolutely necessary for the task.
 4.  **Present (Clean Analysis):** When presenting analysis results, focus on the essential information needed for the task.
 
@@ -69,14 +69,14 @@ When making multiple file edits, run `swift_build_index` once at the end of all 
 
 **Immediate Rebuilds When Critical:**
 Run `swift_build_index` immediately when:
-- You need to use `swift_find_symbol_references` on newly created or modified symbols
+- You need to use `swift_find_symbol_references_files` on newly created or modified symbols
 - Cross-file navigation seems broken after structural changes
 - You're about to perform operations that depend on accurate symbol relationships
 
 **Specific Triggers:**
 1.  **New Swift Files:** After creating new files that define symbols used elsewhere
 2.  **Signature Changes:** When modifying function/method signatures, class/struct declarations, or protocol definitions
-3.  **Empty References:** If `swift_find_symbol_references` returns unexpectedly empty results
+3.  **Empty References:** If `swift_find_symbol_references_files` returns unexpectedly empty results
 4.  **New Projects:** When starting work on any Swift project (SPM or Xcode)
 5.  **Dependency Updates:** After modifying Package.swift or Xcode project dependencies
 6.  **Stale LSP Data:** When LSP operations return outdated information
@@ -192,13 +192,27 @@ def swift_lsp_diagnostics(project_path: str = None, include_recommendations: boo
 
 
 @server.tool()
-@log_tool_execution("swift_find_symbol_references")
-def swift_find_symbol_references(file_path: str, symbol_name: str) -> dict:
-    """Find all references to a symbol in the given Swift file."""
-    # Validate file path for security
-    is_valid, sanitized_path, error_msg = validate_swift_file_path(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
+@log_tool_execution("swift_find_symbol_references_files")
+def swift_find_symbol_references_files(file_paths: list[str], symbol_name: str) -> dict:
+    """Find all references to a symbol across multiple Swift files. Prefer relative paths (e.g., 'src/MyFile.swift')."""
+    # Validate all file paths for security
+    if not file_paths or not isinstance(file_paths, list):
+        return {
+            "success": False,
+            "error": "file_paths must be a non-empty list",
+            "error_type": "VALIDATION_ERROR",
+        }
+
+    sanitized_paths = []
+    for file_path in file_paths:
+        is_valid, sanitized_path, error_msg = validate_swift_file_path(file_path)
+        if not is_valid:
+            return {
+                "success": False,
+                "error": f"Invalid file path '{file_path}': {error_msg}",
+                "error_type": "VALIDATION_ERROR",
+            }
+        sanitized_paths.append(sanitized_path)
 
     if not symbol_name or not isinstance(symbol_name, str):
         return {
@@ -208,11 +222,13 @@ def swift_find_symbol_references(file_path: str, symbol_name: str) -> dict:
         }
 
     try:
-        from .tools.swift_find_symbol_references import (
-            swift_find_symbol_references as find_func,
+        from .tools.swift_find_symbol_references_files import (
+            swift_find_symbol_references_files as find_func,
         )
 
-        return find_func(sanitized_path, symbol_name)
+        result = find_func(sanitized_paths, symbol_name)
+        # Preserve the ErrorType from the tool response
+        return result
     except Exception as e:
         return {
             "success": False,

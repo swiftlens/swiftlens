@@ -12,7 +12,7 @@ import pytest
 
 # Add src directory to path for imports
 from swiftlens.tools.swift_analyze_file import swift_analyze_file
-from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references
+from swiftlens.tools.swift_find_symbol_references_files import swift_find_symbol_references_files
 from swiftlens.tools.swift_get_declaration_context import swift_get_declaration_context
 
 
@@ -437,16 +437,25 @@ def test_declaration_context_complex_structures(complex_features_file):
 @pytest.mark.lsp
 def test_symbol_references_in_generic_context(complex_features_file):
     """Test 3: Finding references in complex generic code."""
-    ref_result = swift_find_symbol_references(complex_features_file, "cache")
+    ref_result = swift_find_symbol_references_files([complex_features_file], "cache")
 
     # Ensure we got a dictionary result
     assert isinstance(ref_result, dict), f"Expected dict response, got {type(ref_result)}"
 
     # Either successful with references found or no references (both are valid)
     if ref_result.get("success", False):
-        reference_count = ref_result.get("reference_count", 0)
+        total_references = ref_result.get("total_references", 0)
         # References found or no references - both are acceptable outcomes
-        assert reference_count >= 0, f"Invalid reference count: {reference_count}"
+        assert total_references >= 0, f"Invalid total reference count: {total_references}"
+
+        # Check the file-specific result structure
+        files = ref_result.get("files", {})
+        assert complex_features_file in files, f"Expected file {complex_features_file} in results"
+
+        file_result = files[complex_features_file]
+        if file_result.get("success", False):
+            file_ref_count = file_result.get("reference_count", 0)
+            assert file_ref_count >= 0, f"Invalid file reference count: {file_ref_count}"
     else:
         # If it failed, ensure it's not a critical error
         error = ref_result.get("error", "")

@@ -17,13 +17,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Understand file structure before editing",
                 "Generate code documentation or navigation",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "symbols": "Hierarchical symbol tree",
                 "format": "types and names",
             },
             "examples": [
-                "swift_analyze_file('MyClass.swift') -> 'User (struct)\\n  id (property)\\n  validate() (method)'"
+                "swift_analyze_file('src/MyClass.swift') -> 'User (struct)\\n  id (property)\\n  validate() (method)'"
             ],
         },
         "swift_analyze_multiple_files": {
@@ -33,13 +35,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Generate project-wide documentation",
                 "Understand multi-file architecture",
             ],
-            "parameters": {"file_paths": "List of Swift file paths"},
+            "parameters": {
+                "file_paths": "List of Swift file paths (prefer relative paths like ['src/A.swift', 'src/B.swift'])"
+            },
             "output_format": {
                 "symbols": "Combined symbol trees",
                 "format": "file-by-file breakdown",
             },
             "examples": [
-                "swift_analyze_multiple_files(['A.swift', 'B.swift']) -> file-by-file symbol breakdown"
+                "swift_analyze_multiple_files(['src/A.swift', 'src/B.swift']) -> file-by-file symbol breakdown"
             ],
         },
         "swift_check_environment": {
@@ -58,20 +62,23 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "swift_check_environment() -> 'Xcode: ✓ | SourceKit-LSP: ✓ | Recommendations: none'"
             ],
         },
-        "swift_find_symbol_references": {
-            "purpose": "Find all references to a specific symbol in a Swift file",
+        "swift_find_symbol_references_files": {
+            "purpose": "Find all references to a specific symbol across multiple Swift files",
             "use_cases": [
-                "Locate all usages of a variable/function/class",
-                "Refactoring impact analysis",
-                "Code navigation and exploration",
+                "Locate all usages of a variable/function/class across specified files",
+                "Multi-file refactoring impact analysis",
+                "Code navigation and exploration across file boundaries",
             ],
-            "parameters": {"file_path": "File path", "symbol_name": "Symbol to find"},
+            "parameters": {
+                "file_paths": "List of file paths (prefer relative paths like 'src/App.swift')",
+                "symbol_name": "Symbol to find",
+            },
             "output_format": {
-                "references": "Reference locations",
-                "format": "line:character positions",
+                "references": "Reference locations per file",
+                "format": "file-by-file breakdown with line:character positions",
             },
             "examples": [
-                "swift_find_symbol_references('App.swift', 'User') -> '5:10\\n12:4\\n23:15'"
+                "swift_find_symbol_references_files(['src/App.swift', 'src/User.swift'], 'User') -> per-file reference breakdown"
             ],
         },
         "swift_get_hover_info": {
@@ -82,7 +89,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Understand symbol context at cursor",
             ],
             "parameters": {
-                "file_path": "File path",
+                "file_path": "File path (prefer relative paths like 'src/App.swift')",
                 "line": "Line number (1-based)",
                 "character": "Character position (1-based)",
             },
@@ -91,7 +98,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "docs": "Documentation if available",
             },
             "examples": [
-                "swift_get_hover_info('App.swift', 10, 5) -> 'var name: String - User's display name'"
+                "swift_get_hover_info('src/App.swift', 10, 5) -> 'var name: String - User's display name'"
             ],
         },
         "swift_get_declaration_context": {
@@ -101,13 +108,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Create navigation hierarchies",
                 "Build symbol indexes with full paths",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "declarations": "Qualified symbol paths",
                 "format": "Module.Class.method format",
             },
             "examples": [
-                "swift_get_declaration_context('App.swift') -> 'MyApp.User.validateEmail\\nMyApp.UserService.addUser'"
+                "swift_get_declaration_context('src/App.swift') -> 'MyApp.User.validateEmail\\nMyApp.UserService.addUser'"
             ],
         },
         "swift_get_symbol_definition": {
@@ -117,13 +126,16 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Locate symbol source across modules",
                 "Code navigation and exploration",
             ],
-            "parameters": {"file_path": "File path", "symbol_name": "Symbol to locate"},
+            "parameters": {
+                "file_path": "File path (prefer relative paths like 'src/App.swift')",
+                "symbol_name": "Symbol to locate",
+            },
             "output_format": {
                 "definition": "Definition location",
                 "format": "file:line:character",
             },
             "examples": [
-                "swift_get_symbol_definition('App.swift', 'User') -> '/path/User.swift:5:12'"
+                "swift_get_symbol_definition('src/App.swift', 'User') -> '/path/User.swift:5:12'"
             ],
         },
         "swift_get_file_imports": {
@@ -133,13 +145,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Generate dependency graphs",
                 "Understand module relationships",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "imports": "Import statements",
                 "format": "one per line, attributes removed",
             },
             "examples": [
-                "swift_get_file_imports('App.swift') -> 'import Foundation\\nimport UIKit\\nimport SwiftUI'"
+                "swift_get_file_imports('src/App.swift') -> 'import Foundation\\nimport UIKit\\nimport SwiftUI'"
             ],
         },
         "swift_summarize_file": {
@@ -149,13 +163,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Analyze code complexity and structure",
                 "Generate file metrics for documentation",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "counts": "Symbol counts by type",
                 "format": "Class: 3\\nFunction: 12\\nEnum: 2",
             },
             "examples": [
-                "swift_summarize_file('MyFile.swift') -> 'Class: 2\\nFunction: 8\\nProperty: 5\\nEnum: 1'"
+                "swift_summarize_file('src/MyFile.swift') -> 'Class: 2\\nFunction: 8\\nProperty: 5\\nEnum: 1'"
             ],
         },
         "swift_get_symbols_overview": {
@@ -165,13 +181,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Filter out implementation details and focus on architecture",
                 "Generate type-only documentation or navigation",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "symbols": "Top-level type symbols only",
                 "format": "SymbolName (Type) format, one per line",
             },
             "examples": [
-                "swift_get_symbols_overview('MyFile.swift') -> 'User (Struct)\\nUserService (Class)\\nUserRole (Enum)'"
+                "swift_get_symbols_overview('src/MyFile.swift') -> 'User (Struct)\\nUserService (Class)\\nUserRole (Enum)'"
             ],
         },
         "swift_validate_file": {
@@ -181,13 +199,15 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Validate code changes for correctness",
                 "Get compiler-grade error detection beyond LSP analysis",
             ],
-            "parameters": {"file_path": "Path to Swift file"},
+            "parameters": {
+                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
+            },
             "output_format": {
                 "validation": "Validation results",
                 "format": "line:col type: message format, with summary",
             },
             "examples": [
-                "swift_validate_file('MyFile.swift') -> '10:5 error: cannot find function\\nSummary: 1 error'"
+                "swift_validate_file('src/MyFile.swift') -> '10:5 error: cannot find function\\nSummary: 1 error'"
             ],
         },
         "swift_replace_symbol_body": {
@@ -198,7 +218,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Modify method logic while keeping signature",
             ],
             "parameters": {
-                "file_path": "File path",
+                "file_path": "File path (prefer relative paths like 'src/App.swift')",
                 "symbol_name": "Symbol name",
                 "new_body": "New body content",
             },
@@ -207,7 +227,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "format": "replacement confirmation or error description",
             },
             "examples": [
-                "swift_replace_symbol_body('App.swift', 'calculateTotal', 'return a + b + tax') -> 'Replaced body of calculateTotal'"
+                "swift_replace_symbol_body('src/App.swift', 'calculateTotal', 'return a + b + tax') -> 'Replaced body of calculateTotal'"
             ],
         },
         "swift_search_pattern": {
@@ -218,7 +238,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "Locate text with context lines for review",
             ],
             "parameters": {
-                "file_path": "File path",
+                "file_path": "File path (prefer relative paths like 'src/App.swift')",
                 "pattern": "Search pattern",
                 "is_regex": "Use regex (default true)",
                 "flags": "Regex flags",
@@ -229,7 +249,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "format": "line:char positions with optional context",
             },
             "examples": [
-                "swift_search_pattern('App.swift', 'func.*calculate') -> '10:4 func calculateTotal()\\n25:8 func calculateTax()'"
+                "swift_search_pattern('src/App.swift', 'func.*calculate') -> '10:4 func calculateTotal()\\n25:8 func calculateTax()'"
             ],
         },
         "swift_lsp_diagnostics": {

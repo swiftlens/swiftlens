@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def validate_swift_file_path(v: str, info) -> str:
@@ -333,6 +333,25 @@ class MultiFileAnalysisResponse(BaseModel):
     total_symbols: int = Field(description="Total symbols across all files", ge=0)
     error: str | None = Field(default=None, description="Error message if failed")
     error_type: ErrorType | None = Field(default=None, description="Error category")
+
+
+class MultiFileSymbolReferenceResponse(BaseModel):
+    """Response for swift_find_symbol_references_files tool."""
+
+    success: bool = Field(description="Operation success status")
+    symbol_name: str = Field(description="Symbol being searched")
+    files: dict[str, SymbolReferenceResponse] = Field(description="Reference results per file")
+    total_files: int = Field(description="Number of files searched", ge=0)
+    total_references: int = Field(description="Total references across all files", ge=0)
+    error: str | None = Field(default=None, description="Error message if failed")
+    error_type: ErrorType | None = Field(default=None, description="Error category")
+
+    @model_validator(mode="after")
+    def validate_symbol_name(self):
+        """Only require non-empty symbol_name when success is True."""
+        if self.success and (not self.symbol_name or not self.symbol_name.strip()):
+            raise ValueError("symbol_name cannot be empty when success is True")
+        return self
 
 
 class PatternMatch(BaseModel):

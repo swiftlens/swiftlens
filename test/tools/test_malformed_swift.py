@@ -19,7 +19,9 @@ pytestmark = pytest.mark.malformed
 
 # Add src directory to path for imports
 from swiftlens.tools.swift_analyze_file import swift_analyze_file  # noqa: E402
-from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references  # noqa: E402
+from swiftlens.tools.swift_find_symbol_references_files import (
+    swift_find_symbol_references_files,  # noqa: E402
+)
 from swiftlens.tools.swift_get_declaration_context import (
     swift_get_declaration_context,  # noqa: E402
 )
@@ -161,7 +163,11 @@ def _test_tool_with_malformed_file(tool_function, tool_name, file_path, *args):
     """Test a tool function with a malformed file and validate graceful handling."""
     try:
         if args:
-            result = tool_function(file_path, *args)
+            # Special handling for multi-file functions that now take file_paths as a list
+            if tool_name == "swift_find_symbol_references_files":
+                result = tool_function([file_path], *args)
+            else:
+                result = tool_function(file_path, *args)
         else:
             result = tool_function(file_path)
 
@@ -262,7 +268,7 @@ def test_basic_tools_with_malformed_files(malformed_swift_files, tool_func, tool
 @pytest.mark.parametrize(
     "tool_func,tool_name,symbol",
     [
-        (swift_find_symbol_references, "swift_find_symbol_references", "User"),
+        (swift_find_symbol_references_files, "swift_find_symbol_references_files", "User"),
         (swift_get_symbol_definition, "swift_get_symbol_definition", "User"),
     ],
 )
@@ -295,7 +301,7 @@ def test_malformed_files_graceful_handling_summary(malformed_swift_files):
 
     # Tools that require additional parameters
     reference_tools = [
-        (swift_find_symbol_references, "swift_find_symbol_references", "User"),
+        (swift_find_symbol_references_files, "swift_find_symbol_references_files", "User"),
         (swift_get_symbol_definition, "swift_get_symbol_definition", "User"),
     ]
 
