@@ -144,7 +144,7 @@ The AI will use SwiftLens tools to:
 3. Find all project-wide references
 4. Provide insights based on the analysis
 
-## Real-time Dashboard
+## Real-time Dashboard (CURRENT NOT WORKING, REWORK IMPLEMENTATION PLANNED)
 
 SwiftLens includes a web dashboard for monitoring AI interactions:
 

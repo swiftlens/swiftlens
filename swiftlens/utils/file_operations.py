@@ -483,7 +483,7 @@ class SwiftFileModifier:
 
                 # Extract the content before and after the body
                 before_body = original_line[: body_start_char + 1]  # Include the opening brace
-                after_body = original_line[body_end_char:]  # Include the closing brace
+                after_body = original_line[body_end_char:]  # From closing brace onwards
 
                 # Construct new line with replaced body
                 new_line = before_body + " " + new_body_content + " " + after_body

@@ -134,15 +134,19 @@ def swift_replace_symbol_body(file_path, symbol_name, new_body):
                 # Convert file path to URI safely
                 file_uri = Path(file_path).as_uri()
 
+                # Normalize symbol name by removing parentheses for functions/methods
+                # This allows users to specify either "functionName" or "functionName()"
+                normalized_symbol_name = symbol_name.replace("()", "")
+
                 # Find the symbol and get body boundaries using safe file content
                 body_boundaries = symbol_position_op.calculate_body_boundaries(
-                    file_uri, symbol_name, file_content
+                    file_uri, normalized_symbol_name, file_content
                 )
 
                 if not body_boundaries:
                     # Check for multiple symbols with the same name
                     insertion_points = symbol_position_op.find_multiple_symbols(
-                        file_uri, symbol_name
+                        file_uri, normalized_symbol_name
                     )
 
                     if insertion_points:

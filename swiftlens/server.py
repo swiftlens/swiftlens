@@ -502,6 +502,7 @@ def main():
 
     # Environment detection for dashboard
     # IMPORTANT: Dashboard MUST be disabled for MCP mode to prevent stdout contamination
+    # TODO: make dashboard works with MCP mode
     enable_dashboard = os.getenv("ENABLE_DASHBOARD", "false").lower() == "true"
 
     if enable_dashboard:
