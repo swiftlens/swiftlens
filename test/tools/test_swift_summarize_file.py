@@ -11,7 +11,7 @@ import time
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_summarize_file import swift_summarize_file
+from swiftlens.tools.swift_summarize_file import swift_summarize_file
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)

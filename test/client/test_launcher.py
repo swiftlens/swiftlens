@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.client.launcher import (
+from swiftlens.client.launcher import (
     dashboard_only_mode,
     demo_mode,
     main,
@@ -30,7 +30,7 @@ class TestLauncherModes:
         mock_dashboard.is_running = True
 
         with patch(
-            "src.client.launcher.start_client_dashboard", return_value=mock_dashboard
+            "swiftlens.client.launcher.start_client_dashboard", return_value=mock_dashboard
         ) as mock_start:
             # Create a task that will complete quickly
             task = asyncio.create_task(dashboard_only_mode(port=8888))
@@ -52,7 +52,7 @@ class TestLauncherModes:
         mock_client.is_connected = True
 
         with patch(
-            "src.client.launcher.connect_with_dashboard", return_value=mock_client
+            "swiftlens.client.launcher.connect_with_dashboard", return_value=mock_client
         ) as mock_connect:
             # Create a task that will complete quickly
             task = asyncio.create_task(remote_connection_mode("https://test-server.com", port=8888))
@@ -73,7 +73,7 @@ class TestLauncherModes:
     async def test_remote_connection_mode_failure(self):
         """Test failed remote connection mode"""
         with patch(
-            "src.client.launcher.connect_with_dashboard",
+            "swiftlens.client.launcher.connect_with_dashboard",
             side_effect=Exception("Connection failed"),
         ):
             result = await remote_connection_mode("https://test-server.com")
@@ -94,7 +94,7 @@ class TestLauncherModes:
         mock_manager.__aexit__ = AsyncMock(return_value=None)
 
         with patch(
-            "src.client.launcher.MCPClientManager", return_value=mock_manager
+            "swiftlens.client.launcher.MCPClientManager", return_value=mock_manager
         ) as mock_manager_class:
             # Create a task that will complete quickly
             task = asyncio.create_task(demo_mode(port=8888, connections=2))
@@ -123,7 +123,7 @@ class TestLauncherModes:
         mock_manager.__aenter__ = AsyncMock(return_value=mock_manager)
         mock_manager.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("src.client.launcher.MCPClientManager", return_value=mock_manager):
+        with patch("swiftlens.client.launcher.MCPClientManager", return_value=mock_manager):
             result = await demo_mode(connections=0)  # No connections
 
         assert result == 1
@@ -147,7 +147,7 @@ class TestLauncherModes:
 
         servers = ["https://server1.com", "https://server2.com"]
 
-        with patch("src.client.launcher.MCPClientManager", return_value=mock_manager):
+        with patch("swiftlens.client.launcher.MCPClientManager", return_value=mock_manager):
             # Create a task that will complete quickly
             task = asyncio.create_task(multiple_connections_mode(servers, port=8888))
 
@@ -174,7 +174,7 @@ class TestLauncherModes:
 
         servers = ["https://server1.com", "https://server2.com"]
 
-        with patch("src.client.launcher.MCPClientManager", return_value=mock_manager):
+        with patch("swiftlens.client.launcher.MCPClientManager", return_value=mock_manager):
             result = await multiple_connections_mode(servers)
 
         assert result == 1
@@ -190,7 +190,7 @@ class TestMainFunction:
         with (
             patch("sys.argv", test_args),
             patch("asyncio.run") as mock_run,
-            patch("src.client.launcher.dashboard_only_mode"),
+            patch("swiftlens.client.launcher.dashboard_only_mode"),
         ):
             mock_run.return_value = 0
             result = main()
@@ -205,7 +205,7 @@ class TestMainFunction:
         with (
             patch("sys.argv", test_args),
             patch("asyncio.run") as mock_run,
-            patch("src.client.launcher.remote_connection_mode"),
+            patch("swiftlens.client.launcher.remote_connection_mode"),
         ):
             mock_run.return_value = 0
             result = main()
@@ -220,7 +220,7 @@ class TestMainFunction:
         with (
             patch("sys.argv", test_args),
             patch("asyncio.run") as mock_run,
-            patch("src.client.launcher.demo_mode"),
+            patch("swiftlens.client.launcher.demo_mode"),
         ):
             mock_run.return_value = 0
             result = main()
@@ -241,7 +241,7 @@ class TestMainFunction:
         with (
             patch("sys.argv", test_args),
             patch("asyncio.run") as mock_run,
-            patch("src.client.launcher.multiple_connections_mode"),
+            patch("swiftlens.client.launcher.multiple_connections_mode"),
         ):
             mock_run.return_value = 0
             result = main()
@@ -256,7 +256,7 @@ class TestMainFunction:
         with (
             patch("sys.argv", test_args),
             patch("asyncio.run") as mock_run,
-            patch("src.client.launcher.dashboard_only_mode"),
+            patch("swiftlens.client.launcher.dashboard_only_mode"),
         ):
             mock_run.return_value = 0
             result = main()

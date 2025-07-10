@@ -10,7 +10,7 @@ import os
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_format_context import swift_format_context
+from swiftlens.tools.swift_format_context import swift_format_context
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)
@@ -281,7 +281,7 @@ def test_consistency_with_analyze_swift_file(content_manager_file):
     # Use standardized error handling for format result
     handle_tool_result(format_result)
 
-    from src.tools.swift_analyze_file import swift_analyze_file
+    from swiftlens.tools.swift_analyze_file import swift_analyze_file
 
     analyze_result = swift_analyze_file(content_manager_file)
 

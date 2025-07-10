@@ -4,7 +4,7 @@ Tests for MCPConnectionState class
 
 from unittest.mock import patch
 
-from src.client.connection_state import LogEntry, MCPConnectionState, ToolCall
+from swiftlens.client.connection_state import LogEntry, MCPConnectionState, ToolCall
 
 
 class TestToolCall:

@@ -11,9 +11,9 @@ including actors, generics, protocols with associated types, result builders, et
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_analyze_file import swift_analyze_file
-from src.tools.swift_find_symbol_references import swift_find_symbol_references
-from src.tools.swift_get_declaration_context import swift_get_declaration_context
+from swiftlens.tools.swift_analyze_file import swift_analyze_file
+from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references
+from swiftlens.tools.swift_get_declaration_context import swift_get_declaration_context
 
 
 def create_complex_features_swift_content():

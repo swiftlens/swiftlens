@@ -3,17 +3,18 @@
 import os
 from typing import Any
 
-from analysis.file_analyzer import FileAnalyzer
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.timeouts import LSPTimeouts
-from model.models import (
+from pydantic import ValidationError
+
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import (
     ErrorType,
     FileAnalysisResponse,
     MultiFileAnalysisResponse,
     SwiftSymbolInfo,
     SymbolKind,
 )
-from pydantic import ValidationError
 
 
 def swift_analyze_multiple_files(file_paths: list[str]) -> dict[str, Any]:

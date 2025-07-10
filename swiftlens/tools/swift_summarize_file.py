@@ -5,11 +5,12 @@ import os
 # from collections import defaultdict  # No longer needed
 from typing import Any
 
-from analysis.file_analyzer import FileAnalyzer
 from lsp.constants import SymbolKind
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.timeouts import LSPTimeouts
-from model.models import ErrorType, FileSummaryResponse
+
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import ErrorType, FileSummaryResponse
 
 
 def swift_summarize_file(file_path: str) -> dict[str, Any]:

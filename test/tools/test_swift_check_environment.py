@@ -10,7 +10,7 @@ import sys
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_check_environment import swift_check_environment
+from swiftlens.tools.swift_check_environment import swift_check_environment
 
 
 @pytest.fixture(scope="module")

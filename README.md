@@ -89,7 +89,7 @@ SwiftLens requires an index store for cross-file analysis. Build it with:
 cd /path/to/your/swift/project
 
 # Build with index store
-swift build -Xswiftc -index-store-path -Xswiftc .build/debug/index
+swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 ```
 
 **Important**: Rebuild the index when you:

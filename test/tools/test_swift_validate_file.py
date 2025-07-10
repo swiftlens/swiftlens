@@ -14,7 +14,7 @@ import tempfile
 import time
 
 # Add src directory to path for imports
-from src.tools.swift_validate_file import (
+from swiftlens.tools.swift_validate_file import (
     swift_validate_file,
     swift_validate_file_basic,
     swift_validate_file_fast,

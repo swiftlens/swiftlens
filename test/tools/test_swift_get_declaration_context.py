@@ -10,7 +10,7 @@ import os
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_get_declaration_context import swift_get_declaration_context
+from swiftlens.tools.swift_get_declaration_context import swift_get_declaration_context
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)

@@ -2,10 +2,10 @@
 
 from typing import Any
 
-from compiler.error_parser import SwiftErrorParser
-from compiler.swift_compiler_client import SwiftCompilerClient
-from model.models import ErrorType, FileValidationResponse
-from utils.validation import validate_swift_file_path
+from swiftlens.compiler.error_parser import SwiftErrorParser
+from swiftlens.compiler.swift_compiler_client import SwiftCompilerClient
+from swiftlens.model.models import ErrorType, FileValidationResponse
+from swiftlens.utils.validation import validate_swift_file_path
 
 # File validation is now handled by shared utility in utils.validation
 

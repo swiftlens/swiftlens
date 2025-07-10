@@ -3,9 +3,10 @@
 import os
 from typing import Any
 
-from analysis.file_analyzer import FileAnalyzer
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
-from model.models import ErrorType, SymbolDefinitionResponse
+
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import ErrorType, SymbolDefinitionResponse
 
 
 def swift_get_symbol_definition(file_path: str, symbol_name: str) -> dict[str, Any]:
@@ -73,7 +74,7 @@ def swift_get_symbol_definition(file_path: str, symbol_name: str) -> dict[str, A
                     # Convert definitions to the expected SymbolDefinition format
                     formatted_definitions = []
                     for definition in result_dict["definitions"]:
-                        from model.models import SymbolDefinition
+                        from swiftlens.model.models import SymbolDefinition
 
                         symbol_def = SymbolDefinition(
                             file_path=definition["file_path"],

@@ -32,8 +32,6 @@ from mcp.server import FastMCP
 from .dashboard.logger import log_tool_execution
 from .dashboard.web_server import start_dashboard_server, stop_dashboard_server
 from .utils.validation import (
-    validate_config_options,
-    validate_project_path,
     validate_swift_file_path,
     validate_swift_file_path_for_writing,
 )
@@ -41,9 +39,6 @@ from .utils.validation import (
 # Ensure cleanup on server shutdown
 atexit.register(cleanup_manager)
 atexit.register(stop_dashboard_server)
-
-# Global LSP manager - initialized in main()
-_lsp_manager = None
 
 # Create the FastMCP server with instructions
 server = FastMCP(
@@ -63,7 +58,7 @@ Your primary directive is to operate with maximum efficiency, minimizing token u
 When asked to modify code, you must act as a careful and methodical Swift engineer.
 1.  **Analyze & Plan:** Use your analysis tools to fully understand the context and potential impact of the change.
 2.  **Propose & Confirm:** Clearly state your proposed changes to the user and await their confirmation before proceeding.
-3.  **Execute with Precision:** Use the dedicated modification tools (`swift_insert_before_symbol`, `swift_replace_symbol_body`, etc.) to perform the changes surgically.
+3.  **Execute with Precision:** Use the dedicated modification tools (`swift_replace_symbol_body`, etc.) to perform the changes surgically.
 4.  **Verify:** **IMMEDIATELY** after any modification, run `swift_validate_file` on the affected file to ensure the changes are syntactically correct and compile.
 
 ### Your Knowledge Base
@@ -179,6 +174,7 @@ def swift_check_environment() -> dict:
 
 
 @server.tool()
+@log_tool_execution("swift_lsp_diagnostics")
 def swift_lsp_diagnostics(project_path: str = None, include_recommendations: bool = True) -> dict:
     """Comprehensive LSP diagnostics combining environment, health, and performance checks.
 
@@ -396,78 +392,6 @@ def swift_validate_file(file_path: str) -> dict:
 
 
 @server.tool()
-def swift_insert_before_symbol(file_path: str, symbol_name, content):
-    """Insert code directly before a specified Swift symbol using LSP positioning."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate symbol_name and content parameters
-    if not symbol_name or not isinstance(symbol_name, str):
-        return {
-            "success": False,
-            "error": "symbol_name must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(content, str):
-        return {
-            "success": False,
-            "error": "content must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from .tools.swift_insert_before_symbol import (
-            swift_insert_before_symbol as insert_func,
-        )
-
-        return insert_func(sanitized_path, symbol_name, content)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Symbol insertion failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swift_insert_after_symbol(file_path: str, symbol_name, content):
-    """Insert code directly after a specified Swift symbol using LSP positioning."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate symbol_name and content parameters
-    if not symbol_name or not isinstance(symbol_name, str):
-        return {
-            "success": False,
-            "error": "symbol_name must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(content, str):
-        return {
-            "success": False,
-            "error": "content must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from .tools.swift_insert_after_symbol import (
-            swift_insert_after_symbol as insert_func,
-        )
-
-        return insert_func(sanitized_path, symbol_name, content)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Symbol insertion failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
 def swift_replace_symbol_body(file_path: str, symbol_name, new_body):
     """Replace the body content of a specified Swift symbol while preserving the declaration."""
     # Validate file path for security (write operation)
@@ -499,48 +423,6 @@ def swift_replace_symbol_body(file_path: str, symbol_name, new_body):
         return {
             "success": False,
             "error": f"Symbol body replacement failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swift_replace_regex(
-    file_path: str, regex_pattern: str, replacement: str, flags: str = ""
-) -> dict:
-    """Apply regex replacements in Swift file content with atomic file operations."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate regex parameters
-    if not regex_pattern or not isinstance(regex_pattern, str):
-        return {
-            "success": False,
-            "error": "regex_pattern must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(replacement, str):
-        return {
-            "success": False,
-            "error": "replacement must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(flags, str):
-        return {
-            "success": False,
-            "error": "flags must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from .tools.swift_replace_regex import swift_replace_regex as replace_func
-
-        return replace_func(sanitized_path, regex_pattern, replacement, flags)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Regex replacement failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
 
@@ -593,45 +475,6 @@ def swift_search_pattern(
         return {
             "success": False,
             "error": f"Pattern search failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swiftlens_initialize_project(project_path: str = ".", config_options: dict = None) -> dict:
-    """Initialize SwiftLens capabilities for an existing Swift project to enhance AI-assisted development.
-
-    Args:
-        project_path: Path to the existing Swift project (default: current directory)
-        config_options: Optional configuration settings for SwiftLens setup
-
-    Returns:
-        JSON response with initialization status and project analysis
-    """
-    # Validate project path for security
-    is_valid, sanitized_path, error_msg = validate_project_path(project_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate and sanitize config options
-    is_config_valid, sanitized_config, config_error = validate_config_options(config_options)
-    if not is_config_valid:
-        return {
-            "success": False,
-            "error": config_error,
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from .tools.swiftlens_initialize_project import (
-            swiftlens_initialize_project as init_func,
-        )
-
-        return init_func(sanitized_path, sanitized_config)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Project initialization failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
 

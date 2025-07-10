@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from model.models import ErrorType, ToolHelpInfo, ToolHelpResponse
+from swiftlens.model.models import ErrorType, ToolHelpInfo, ToolHelpResponse
 
 
 def get_tool_help(tool_name: str = None) -> dict[str, Any]:
@@ -204,68 +204,6 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "swift_validate_file('MyFile.swift') -> '10:5 error: cannot find function\\nSummary: 1 error'"
             ],
         },
-        "swift_insert_before_symbol": {
-            "purpose": "Insert code directly before a specified Swift symbol using LSP positioning",
-            "use_cases": [
-                "Add documentation comments before functions/classes",
-                "Insert code annotations or attributes",
-                "Add new properties or methods before existing ones",
-            ],
-            "parameters": {
-                "file_path": "File path",
-                "symbol_name": "Symbol name",
-                "content": "Code to insert",
-            },
-            "output_format": {
-                "result": "Success message",
-                "format": "line count and position, or error description",
-            },
-            "examples": [
-                "swift_insert_before_symbol('App.swift', 'User', '// MARK: - User Model') -> 'Inserted 1 lines before User at line 15'"
-            ],
-        },
-        "swift_insert_after_symbol": {
-            "purpose": "Insert code directly after a specified Swift symbol using LSP positioning",
-            "use_cases": [
-                "Add new methods after existing ones",
-                "Insert related functionality after classes/structs",
-                "Add test cases after function definitions",
-            ],
-            "parameters": {
-                "file_path": "File path",
-                "symbol_name": "Symbol name",
-                "content": "Code to insert",
-            },
-            "output_format": {
-                "result": "Success message",
-                "format": "line count and position, or error description",
-            },
-            "examples": [
-                "swift_insert_after_symbol('App.swift', 'User', 'extension User { }') -> 'Inserted 1 lines after User at line 25'"
-            ],
-        },
-        "swift_replace_regex": {
-            "purpose": "Apply regex replacements with smart auto-escaping for Swift patterns",
-            "use_cases": [
-                "Rename functions across files (func hello() -> func greetings())",
-                "Replace type names with auto-escaping (Helper() -> NewHelper())",
-                "Update string literals or file paths safely",
-                "Advanced regex replacements with manual escaping",
-            ],
-            "parameters": {
-                "file_path": "File path",
-                "regex_pattern": "Pattern to match",
-                "replacement": "Replacement text",
-                "flags": "Optional regex flags (i,m,s)",
-            },
-            "output_format": {
-                "replacements": "Number of replacements made",
-                "format": "count and success status",
-            },
-            "examples": [
-                "swift_replace_regex('App.swift', 'func hello()', 'func greetings()') -> 'Replaced 1 occurrence'"
-            ],
-        },
         "swift_replace_symbol_body": {
             "purpose": "Replace the body content of a specified Swift symbol while preserving declaration",
             "use_cases": [
@@ -306,6 +244,27 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
             },
             "examples": [
                 "swift_search_pattern('App.swift', 'func.*calculate') -> '10:4 func calculateTotal()\\n25:8 func calculateTax()'"
+            ],
+        },
+        "swift_lsp_diagnostics": {
+            "purpose": "Comprehensive LSP diagnostics combining environment, health, and performance checks",
+            "use_cases": [
+                "Diagnose SourceKit-LSP setup issues",
+                "Check Swift development environment",
+                "Monitor LSP client health and performance",
+                "Validate project configuration for LSP",
+            ],
+            "parameters": {
+                "project_path": "Optional path to Swift project",
+                "include_recommendations": "Whether to include setup recommendations (default true)",
+            },
+            "output_format": {
+                "diagnostics": "Environment, health, stats, and recommendations",
+                "format": "comprehensive JSON with all diagnostic data",
+            },
+            "examples": [
+                "swift_lsp_diagnostics() -> full environment and LSP diagnostics",
+                "swift_lsp_diagnostics('/path/to/project') -> project-specific diagnostics",
             ],
         },
     }

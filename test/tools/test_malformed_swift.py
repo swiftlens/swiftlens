@@ -18,15 +18,17 @@ import pytest
 pytestmark = pytest.mark.malformed
 
 # Add src directory to path for imports
-from src.tools.swift_analyze_file import swift_analyze_file  # noqa: E402
-from src.tools.swift_find_symbol_references import swift_find_symbol_references  # noqa: E402
-from src.tools.swift_format_context import swift_format_context  # noqa: E402
-from src.tools.swift_get_declaration_context import swift_get_declaration_context  # noqa: E402
-from src.tools.swift_get_hover_info import swift_get_hover_info  # noqa: E402
-from src.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
-from src.tools.swift_get_symbols_overview import swift_get_symbols_overview  # noqa: E402
-from src.tools.swift_summarize_file import swift_summarize_file  # noqa: E402
-from src.tools.swift_validate_file import swift_validate_file  # noqa: E402
+from swiftlens.tools.swift_analyze_file import swift_analyze_file  # noqa: E402
+from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references  # noqa: E402
+from swiftlens.tools.swift_format_context import swift_format_context  # noqa: E402
+from swiftlens.tools.swift_get_declaration_context import (
+    swift_get_declaration_context,  # noqa: E402
+)
+from swiftlens.tools.swift_get_hover_info import swift_get_hover_info  # noqa: E402
+from swiftlens.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
+from swiftlens.tools.swift_get_symbols_overview import swift_get_symbols_overview  # noqa: E402
+from swiftlens.tools.swift_summarize_file import swift_summarize_file  # noqa: E402
+from swiftlens.tools.swift_validate_file import swift_validate_file  # noqa: E402
 
 
 def create_malformed_swift_files():

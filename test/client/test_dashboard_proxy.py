@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.client.connection_state import MCPConnectionState
-from src.client.dashboard_proxy import DashboardProxy
+from swiftlens.client.connection_state import MCPConnectionState
+from swiftlens.client.dashboard_proxy import DashboardProxy
 
 
 class TestDashboardProxy:
@@ -150,20 +150,19 @@ class TestDashboardProxy:
     @patch("threading.Timer")
     def test_start_server_browser_opening(self, mock_timer, mock_browser, real_dashboard):
         """Test server start with browser opening"""
+        # real_dashboard fixture activates real dashboard functionality
         dashboard = DashboardProxy(port=8897)
 
-        # Use real dashboard fixture to bypass test environment protection
-        with real_dashboard():
-            # Override test environment detection to allow dashboard to start
-            dashboard._detect_test_environment = Mock(return_value=False)
-            dashboard._is_test_environment = False
+        # Override test environment detection to allow dashboard to start
+        dashboard._detect_test_environment = Mock(return_value=False)
+        dashboard._is_test_environment = False
 
-            with patch.object(dashboard, "server_thread") as mock_thread:
-                mock_thread.start = Mock()
-                dashboard.server_thread = Mock()
-                dashboard.server_thread.start = Mock()
+        with patch.object(dashboard, "server_thread") as mock_thread:
+            mock_thread.start = Mock()
+            dashboard.server_thread = Mock()
+            dashboard.server_thread.start = Mock()
 
-                dashboard.start_server(open_browser=True)
+            dashboard.start_server(open_browser=True)
 
             # Should schedule browser opening
             mock_timer.assert_called_once()
@@ -312,7 +311,7 @@ class TestDashboardProxy:
         """Test the find_available_port utility function"""
         from unittest.mock import patch
 
-        from src.client.dashboard_proxy import find_available_port
+        from swiftlens.client.dashboard_proxy import find_available_port
 
         # Test finding first available port (no conflicts)
         with patch("socket.socket.bind") as mock_bind:
@@ -343,7 +342,7 @@ class TestDashboardProxy:
         """Test error handling when no ports are available"""
         import pytest
 
-        from src.client.dashboard_proxy import find_available_port
+        from swiftlens.client.dashboard_proxy import find_available_port
 
         # Test by starting with a port that will quickly go out of range
         # The function skips ports above 65535, so with max_attempts=1 starting from 65536 should fail
@@ -376,24 +375,22 @@ class TestDashboardProxy:
             assert dashboard.port == 8907
             assert dashboard.port_was_changed is True
 
-            # Use real dashboard fixture to bypass test environment protection
-            with real_dashboard():
-                # Override test environment detection to allow dashboard to start
-                dashboard._detect_test_environment = Mock(return_value=False)
-                dashboard._is_test_environment = False
+            # real_dashboard fixture activates real dashboard functionality
+            # Override test environment detection to allow dashboard to start
+            dashboard._detect_test_environment = Mock(return_value=False)
+            dashboard._is_test_environment = False
 
-                # Mock the server start to avoid actually starting it
-                with (
-                    patch.object(dashboard, "server_thread"),
-                    patch.object(dashboard, "server_process"),
-                    patch("threading.Timer"),
-                ):
-                    dashboard.start_server(open_browser=False)
+            # Mock the server start to avoid actually starting it
+            with (
+                patch.object(dashboard, "server_thread"),
+                patch.object(dashboard, "server_process"),
+                patch("threading.Timer"),
+            ):
+                dashboard.start_server(open_browser=False)
 
-                    # Check that port change message was printed
-                    captured = capsys.readouterr()
-                    assert "🔄 Port 8906 in use, using port 8907 instead" in captured.out
-                    assert (
-                        "🌐 SwiftLens Client Dashboard started on http://127.0.0.1:8907"
-                        in captured.out
-                    )
+                # Check that port change message was printed
+                captured = capsys.readouterr()
+                assert "🔄 Port 8906 in use, using port 8907 instead" in captured.out
+                assert (
+                    "🌐 SwiftLens Client Dashboard started on http://127.0.0.1:8907" in captured.out
+                )

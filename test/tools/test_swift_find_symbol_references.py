@@ -39,7 +39,7 @@ import os
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_find_symbol_references import swift_find_symbol_references
+from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)

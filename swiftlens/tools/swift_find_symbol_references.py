@@ -3,10 +3,11 @@
 import os
 from typing import Any
 
-from analysis.file_analyzer import FileAnalyzer
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
-from model.models import ErrorType, SymbolReference, SymbolReferenceResponse
 from pydantic import ValidationError
+
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import ErrorType, SymbolReference, SymbolReferenceResponse
 
 
 def swift_find_symbol_references(file_path: str, symbol_name: str, client=None) -> dict[str, Any]:
