@@ -5,7 +5,7 @@ import subprocess
 import sys
 from typing import Any
 
-from src.model.models import EnvironmentCheckResponse, ErrorType
+from model.models import EnvironmentCheckResponse, ErrorType
 
 
 def swift_check_environment() -> dict[str, Any]:

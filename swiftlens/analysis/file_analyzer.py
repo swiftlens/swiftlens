@@ -213,50 +213,23 @@ class FileAnalyzer:
 
         try:
             file_lines = content.split("\n")
-            print(f"DEBUG: File has {len(file_lines)} lines")
 
             # Sanitize symbol name, removing parentheses for functions/methods
             symbol_to_find = symbol_name.replace("()", "")
-            print(f"DEBUG: Looking for symbol: '{symbol_to_find}'")
 
             # Use improved symbol position finding that prioritizes declarations
             line_num, char_num = self._find_symbol_declaration_position(file_lines, symbol_to_find)
 
-            print(f"DEBUG: Symbol position found: line={line_num}, char={char_num}")
-            if line_num != -1:
-                print(f"DEBUG: Position points to: {file_lines[line_num].strip()}")
-
             if line_num == -1:
-                print(f"DEBUG: Symbol '{symbol_to_find}' not found in file")
                 # Symbol not found in file - this is a valid result with 0 references
                 return self.result_builder.build_reference_result(
                     file_path=file_path, symbol_name=symbol_name, references=[]
                 )
 
             symbol_position = LSPProtocol.create_position(line_num, char_num)
-            print(f"DEBUG: LSP position for '{symbol_to_find}': line={line_num}, char={char_num}")
 
-            # Get references to the symbol with enhanced debugging
-            print(f"DEBUG: Making LSP references request with URI: {file_uri}")
-            print(
-                f"DEBUG: Position: line={symbol_position['line']}, char={symbol_position['character']}"
-            )
-
+            # Get references to the symbol
             raw_references = self.references_op.execute(file_uri, symbol_position)
-
-            print(f"DEBUG: LSP raw_references result type: {type(raw_references)}")
-            print(
-                f"DEBUG: LSP raw_references count: {len(raw_references) if raw_references else 'None'}"
-            )
-
-            if raw_references is not None and len(raw_references) > 0:
-                print(
-                    f"DEBUG: First reference sample: {raw_references[0] if raw_references else 'None'}"
-                )
-            elif raw_references is not None:
-                print("DEBUG: LSP returned empty list - no references found")
-            else:
-                print("DEBUG: LSP returned None - operation failed")
 
             if raw_references is None:
                 return self.result_builder.build_error_result(

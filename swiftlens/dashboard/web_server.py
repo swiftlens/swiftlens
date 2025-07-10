@@ -4,6 +4,7 @@ Provides REST API and WebSocket endpoints for real-time monitoring
 """
 
 import asyncio
+import logging
 import threading
 from pathlib import Path
 
@@ -261,7 +262,7 @@ class DashboardServer:
         self.server_thread = threading.Thread(target=run_server, daemon=True)
         self.server_thread.start()
 
-        print(f"🌐 Swift Context MCP Dashboard started on http://{self.host}:{self.port}")
+        logging.info(f"Swift Context MCP Dashboard started on http://{self.host}:{self.port}")
 
     def stop_server(self):
         """Stop the dashboard server"""
@@ -272,7 +273,7 @@ class DashboardServer:
             self.server_thread.join(timeout=5)
 
         try:
-            print("🛑 Swift Context MCP Dashboard stopped")
+            logging.info("Swift Context MCP Dashboard stopped")
         except (ValueError, OSError):
             # Handle cases where stdout/stderr are closed during shutdown
             pass

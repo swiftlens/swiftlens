@@ -3,12 +3,11 @@
 import os
 from typing import Any
 
+from analysis.file_analyzer import FileAnalyzer
 from lsp.constants import SymbolKind as LSPSymbolKind
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.timeouts import LSPTimeouts
-
-from src.analysis.file_analyzer import FileAnalyzer
-from src.model.models import ErrorType, SwiftSymbolInfo, SymbolKind, SymbolsOverviewResponse
+from model.models import ErrorType, SwiftSymbolInfo, SymbolKind, SymbolsOverviewResponse
 
 
 def _convert_lsp_symbol_kind_to_string(kind: int) -> str:

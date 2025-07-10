@@ -4,7 +4,7 @@ import os
 import re
 from typing import Any
 
-from src.model.models import ErrorType, FileImportsResponse
+from model.models import ErrorType, FileImportsResponse
 
 
 def swift_get_file_imports(file_path: str) -> dict[str, Any]:

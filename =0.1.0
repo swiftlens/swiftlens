@@ -1,0 +1,2 @@
+Looking in indexes: https://test.pypi.org/simple/, https://pypi.org/simple/
+Requirement already satisfied: swiftlens-core in ./venv_publish/lib/python3.13/site-packages (0.1.4)

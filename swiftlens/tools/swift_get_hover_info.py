@@ -3,11 +3,10 @@
 import os
 from typing import Any
 
+from analysis.file_analyzer import FileAnalyzer
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.timeouts import LSPTimeouts
-
-from src.analysis.file_analyzer import FileAnalyzer
-from src.model.models import ErrorType, HoverInfoResponse
+from model.models import ErrorType, HoverInfoResponse
 
 
 def swift_get_hover_info(file_path: str, line: int, character: int) -> dict[str, Any]:

@@ -3,10 +3,9 @@
 import os
 from typing import Any
 
+from analysis.file_analyzer import FileAnalyzer
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
-
-from src.analysis.file_analyzer import FileAnalyzer
-from src.model.models import ErrorType, SymbolDefinitionResponse
+from model.models import ErrorType, SymbolDefinitionResponse
 
 
 def swift_get_symbol_definition(file_path: str, symbol_name: str) -> dict[str, Any]:
@@ -61,36 +60,20 @@ def swift_get_symbol_definition(file_path: str, symbol_name: str) -> dict[str, A
     try:
         # Find Swift project root for proper LSP initialization
         project_root = find_swift_project_root(file_path)
-        print(f"DEBUG: Found project root: {project_root}")
-        print(f"DEBUG: Looking for definition of '{symbol_name}' in {file_path}")
 
-        # Check if IndexStoreDB exists in the project
-        if project_root:
-            index_store_path = os.path.join(project_root, ".build", "index")
-            print(f"DEBUG: IndexStoreDB path: {index_store_path}")
-            print(f"DEBUG: IndexStoreDB exists: {os.path.exists(index_store_path)}")
-            if os.path.exists(index_store_path):
-                index_files = (
-                    list(os.listdir(index_store_path)) if os.path.isdir(index_store_path) else []
-                )
-                print(f"DEBUG: IndexStoreDB contents: {len(index_files)} items")
+        # Note: IndexStoreDB path would be at project_root/.build/index if needed
 
         # Initialize LSP client with project root and proper timeout
         with managed_lsp_client(project_root=project_root, timeout=10.0) as client:
-            print("DEBUG: LSP client initialized successfully")
             analyzer = FileAnalyzer(client)
-            print("DEBUG: FileAnalyzer created, calling get_symbol_definition")
             result_dict = analyzer.get_symbol_definition(file_path, symbol_name)
-            print(
-                f"DEBUG: get_symbol_definition returned: success={result_dict.get('success')}, defs={len(result_dict.get('definitions', []))}"
-            )
 
             if result_dict["success"]:
                 if result_dict["definitions"]:
                     # Convert definitions to the expected SymbolDefinition format
                     formatted_definitions = []
                     for definition in result_dict["definitions"]:
-                        from src.model.models import SymbolDefinition
+                        from model.models import SymbolDefinition
 
                         symbol_def = SymbolDefinition(
                             file_path=definition["file_path"],

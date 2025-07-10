@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from src.model.models import ErrorType, ToolHelpInfo, ToolHelpResponse
+from model.models import ErrorType, ToolHelpInfo, ToolHelpResponse
 
 
 def get_tool_help(tool_name: str = None) -> dict[str, Any]:
