@@ -14,7 +14,7 @@ import tempfile
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_get_symbol_definition import swift_get_symbol_definition
+from swiftlens.tools.swift_get_symbol_definition import swift_get_symbol_definition
 
 
 def parse_definition_output(output):

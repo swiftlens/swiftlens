@@ -1,0 +1,6 @@
+Looking in indexes: https://test.pypi.org/simple/, https://pypi.org/simple/
+Collecting swiftlens-core
+  Using cached swiftlens_core-0.1.4-cp313-cp313-macosx_15_0_arm64.whl.metadata (2.7 kB)
+Using cached swiftlens_core-0.1.4-cp313-cp313-macosx_15_0_arm64.whl (522 kB)
+Installing collected packages: swiftlens-core
+Successfully installed swiftlens-core-0.1.4

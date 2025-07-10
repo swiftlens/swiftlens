@@ -16,7 +16,7 @@ src_path = os.path.join(os.path.dirname(__file__), "..", "..", "src")
 # Add the parent directory to enable relative imports
 parent_path = os.path.join(os.path.dirname(__file__), "..", "..")
 # Now we can import normally
-from src.tools.swift_search_pattern import (  # noqa: E402
+from swiftlens.tools.swift_search_pattern import (  # noqa: E402
     _get_context_lines,
     _get_line_number_and_char,
     _parse_flags,

@@ -202,7 +202,7 @@ def real_dashboard(monkeypatch):
         del os.environ["SWIFTLENS_DISABLE_DASHBOARD"]
 
     # Restore the real DashboardProxy class for this test
-    from src.client.dashboard_proxy import DashboardProxy
+    from swiftlens.client.dashboard_proxy import DashboardProxy
 
     monkeypatch.undo()  # Undo the mocking for this test
 

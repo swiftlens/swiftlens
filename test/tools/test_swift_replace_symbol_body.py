@@ -14,7 +14,7 @@ import time
 import pytest
 
 # Direct imports without sys.path manipulation
-from src.tools.swift_replace_symbol_body import (  # noqa: E402
+from swiftlens.tools.swift_replace_symbol_body import (  # noqa: E402
     swift_replace_symbol_body,
 )
 

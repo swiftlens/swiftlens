@@ -17,7 +17,7 @@ import pytest
 pytestmark = pytest.mark.slow
 
 # Add src directory to path for imports
-from src.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
+from swiftlens.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
 
 # Import shared utilities for LSP test handling
 from .lsp_test_utils import assert_is_acceptable_lsp_failure, parse_definition_output  # noqa: E402

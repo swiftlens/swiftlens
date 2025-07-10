@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 # Add src directory to path for model imports
-from src.model.models import ErrorType
+from swiftlens.model.models import ErrorType
 
 # Set up logging for test helpers
 log = logging.getLogger(__name__)

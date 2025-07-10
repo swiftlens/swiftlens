@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.client.mcp_client import (
+from swiftlens.client.mcp_client import (
     MCPClientManager,
     MCPClientWithDashboard,
     connect_with_dashboard,
@@ -41,7 +41,7 @@ class TestMCPClientWithDashboard:
         """Test connection failure when httpx is not available"""
         client = MCPClientWithDashboard("https://test-server.com")
 
-        with patch("src.client.mcp_client.httpx", None):
+        with patch("swiftlens.client.mcp_client.httpx", None):
             with pytest.raises(ImportError, match="httpx is required"):
                 await client.connect()
 
@@ -55,7 +55,7 @@ class TestMCPClientWithDashboard:
         mock_response.status_code = 200
         mock_http_client.get.return_value = mock_response
 
-        with patch("src.client.mcp_client.httpx") as mock_httpx:
+        with patch("swiftlens.client.mcp_client.httpx") as mock_httpx:
             mock_httpx.AsyncClient.return_value = mock_http_client
 
             result = await client.connect()
@@ -73,7 +73,7 @@ class TestMCPClientWithDashboard:
         mock_http_client = AsyncMock()
         mock_http_client.get.side_effect = Exception("Health check failed")
 
-        with patch("src.client.mcp_client.httpx") as mock_httpx:
+        with patch("swiftlens.client.mcp_client.httpx") as mock_httpx:
             mock_httpx.AsyncClient.return_value = mock_http_client
 
             result = await client.connect()
@@ -88,7 +88,7 @@ class TestMCPClientWithDashboard:
         """Test complete connection failure"""
         client = MCPClientWithDashboard("https://test-server.com")
 
-        with patch("src.client.mcp_client.httpx") as mock_httpx:
+        with patch("swiftlens.client.mcp_client.httpx") as mock_httpx:
             mock_httpx.AsyncClient.side_effect = Exception("Connection failed")
 
             result = await client.connect()
@@ -215,7 +215,7 @@ class TestMCPClientManager:
 
     def test_manager_initialization_with_dashboard(self, real_dashboard):
         """Test manager initialization with dashboard enabled"""
-        with patch("src.client.mcp_client.DashboardProxy") as mock_dashboard_class:
+        with patch("swiftlens.client.mcp_client.DashboardProxy") as mock_dashboard_class:
             mock_dashboard = Mock()
             mock_dashboard.start_server = Mock()
             mock_dashboard_class.return_value = mock_dashboard
@@ -244,7 +244,7 @@ class TestMCPClientManager:
         """Test successful server connection"""
         manager = MCPClientManager(enable_dashboard=False)
 
-        with patch("src.client.mcp_client.MCPClientWithDashboard") as mock_client_class:
+        with patch("swiftlens.client.mcp_client.MCPClientWithDashboard") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
             mock_client_class.return_value = mock_client
@@ -260,7 +260,7 @@ class TestMCPClientManager:
         """Test failed server connection"""
         manager = MCPClientManager(enable_dashboard=False)
 
-        with patch("src.client.mcp_client.MCPClientWithDashboard") as mock_client_class:
+        with patch("swiftlens.client.mcp_client.MCPClientWithDashboard") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = False
             mock_client_class.return_value = mock_client
@@ -370,7 +370,7 @@ class TestMCPClientManager:
 
     def test_get_dashboard_url_with_dashboard(self):
         """Test getting dashboard URL when dashboard is enabled"""
-        with patch("src.client.mcp_client.DashboardProxy") as mock_dashboard_class:
+        with patch("swiftlens.client.mcp_client.DashboardProxy") as mock_dashboard_class:
             mock_dashboard = Mock()
             mock_dashboard.start_server = Mock()
             mock_dashboard.get_url.return_value = "http://127.0.0.1:53729"
@@ -390,7 +390,7 @@ class TestMCPClientManager:
 
     def test_stop_dashboard(self):
         """Test stopping dashboard"""
-        with patch("src.client.mcp_client.DashboardProxy") as mock_dashboard_class:
+        with patch("swiftlens.client.mcp_client.DashboardProxy") as mock_dashboard_class:
             mock_dashboard = Mock()
             mock_dashboard.start_server = Mock()
             mock_dashboard.stop_server = Mock()
@@ -409,8 +409,8 @@ class TestConvenienceFunctions:
     async def test_connect_with_dashboard(self):
         """Test connect_with_dashboard convenience function"""
         with (
-            patch("src.client.mcp_client.DashboardProxy") as mock_dashboard_class,
-            patch("src.client.mcp_client.MCPClientWithDashboard") as mock_client_class,
+            patch("swiftlens.client.mcp_client.DashboardProxy") as mock_dashboard_class,
+            patch("swiftlens.client.mcp_client.MCPClientWithDashboard") as mock_client_class,
         ):
             mock_dashboard = Mock()
             mock_dashboard.start_server = Mock()
@@ -432,7 +432,7 @@ class TestConvenienceFunctions:
 
     def test_start_client_dashboard(self):
         """Test start_client_dashboard convenience function"""
-        with patch("src.client.mcp_client.DashboardProxy") as mock_dashboard_class:
+        with patch("swiftlens.client.mcp_client.DashboardProxy") as mock_dashboard_class:
             mock_dashboard = Mock()
             mock_dashboard.start_server = Mock()
             mock_dashboard_class.return_value = mock_dashboard

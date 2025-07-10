@@ -10,9 +10,9 @@ from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.operations.symbol_position import SymbolPositionOperation
 from lsp.timeouts import LSPTimeouts
 
-from src.model.models import ErrorType, OperationType, ReplaceOperationResponse
-from src.utils.file_operations import SwiftFileModifier
-from src.utils.validation import validate_swift_file_path_for_writing
+from swiftlens.model.models import ErrorType, OperationType, ReplaceOperationResponse
+from swiftlens.utils.file_operations import SwiftFileModifier
+from swiftlens.utils.validation import validate_swift_file_path_for_writing
 
 # File validation is now handled by shared utility in utils.validation
 

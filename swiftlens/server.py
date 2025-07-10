@@ -5,50 +5,33 @@ Provides semantic Swift code understanding tools for AI models
 """
 
 import atexit
+import logging
 import os
 import sys
 
-# Check for swiftlens-core dependency before other imports
+# Configure logging - silent by default to avoid stdio contamination
+logging.getLogger().addHandler(logging.NullHandler())
+
+# Enable debug logging to file if MCP_DEBUG is set
+if os.getenv("MCP_DEBUG"):
+    logging.basicConfig(
+        filename="/tmp/swiftlens-debug.log",
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+# Import swiftlens-core dependency
 try:
-    import lsp
-
-    _ = lsp  # Keep import to verify it worked
+    from lsp.client_manager import cleanup_manager, get_manager
 except ImportError:
-    print("📦 swiftlens-core not found. Installing from TestPyPI...")
-    import subprocess
-
-    try:
-        subprocess.check_call(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "--index-url",
-                "https://test.pypi.org/simple/",
-                "swiftlens-core",
-            ]
-        )
-        print("✅ swiftlens-core installed successfully")
-        # After installation, we need to restart to properly load the module
-        print("⚠️  Please restart the MCP server for changes to take effect")
-        sys.exit(0)
-    except Exception as e:
-        print(f"❌ Failed to install swiftlens-core: {e}")
-        print("\nPlease install manually:")
-        print("pip install --index-url https://test.pypi.org/simple/ swiftlens-core")
-        sys.exit(1)
-
-# Import LSP functionality
-from lsp.client_manager import cleanup_manager, get_manager
+    logging.error("swiftlens-core not found. Please install: pip install swiftlens-core")
+    raise
 from mcp.server import FastMCP
 
-# Use absolute imports for other modules
-from src.dashboard.logger import log_tool_execution
-from src.dashboard.web_server import start_dashboard_server, stop_dashboard_server
-from src.utils.validation import (
-    validate_config_options,
-    validate_project_path,
+# Use relative imports for local modules
+from .dashboard.logger import log_tool_execution
+from .dashboard.web_server import start_dashboard_server, stop_dashboard_server
+from .utils.validation import (
     validate_swift_file_path,
     validate_swift_file_path_for_writing,
 )
@@ -56,9 +39,6 @@ from src.utils.validation import (
 # Ensure cleanup on server shutdown
 atexit.register(cleanup_manager)
 atexit.register(stop_dashboard_server)
-
-# Initialize the manager early if available
-_lsp_manager = get_manager()
 
 # Create the FastMCP server with instructions
 server = FastMCP(
@@ -78,7 +58,7 @@ Your primary directive is to operate with maximum efficiency, minimizing token u
 When asked to modify code, you must act as a careful and methodical Swift engineer.
 1.  **Analyze & Plan:** Use your analysis tools to fully understand the context and potential impact of the change.
 2.  **Propose & Confirm:** Clearly state your proposed changes to the user and await their confirmation before proceeding.
-3.  **Execute with Precision:** Use the dedicated modification tools (`swift_insert_before_symbol`, `swift_replace_symbol_body`, etc.) to perform the changes surgically.
+3.  **Execute with Precision:** Use the dedicated modification tools (`swift_replace_symbol_body`, etc.) to perform the changes surgically.
 4.  **Verify:** **IMMEDIATELY** after any modification, run `swift_validate_file` on the affected file to ensure the changes are syntactically correct and compile.
 
 ### Your Knowledge Base
@@ -103,7 +83,7 @@ def swift_analyze_file(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_analyze_file import swift_analyze_file as analyze_func
+        from .tools.swift_analyze_file import swift_analyze_file as analyze_func
 
         return analyze_func(sanitized_path)
     except FileNotFoundError:
@@ -150,7 +130,7 @@ def swift_analyze_multiple_files(file_paths: list[str]) -> dict:
         sanitized_paths.append(sanitized_path)
 
     try:
-        from src.tools.swift_analyze_multiple_files import (
+        from .tools.swift_analyze_multiple_files import (
             swift_analyze_multiple_files as analyze_func,
         )
 
@@ -173,7 +153,7 @@ def swift_format_context(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_format_context import swift_format_context as format_func
+        from .tools.swift_format_context import swift_format_context as format_func
 
         return format_func(sanitized_path)
     except Exception as e:
@@ -188,12 +168,13 @@ def swift_format_context(file_path: str) -> dict:
 @log_tool_execution("swift_check_environment")
 def swift_check_environment() -> dict:
     """Check if Swift development environment is properly configured."""
-    from src.tools.swift_check_environment import swift_check_environment as check_func
+    from .tools.swift_check_environment import swift_check_environment as check_func
 
     return check_func()
 
 
 @server.tool()
+@log_tool_execution("swift_lsp_diagnostics")
 def swift_lsp_diagnostics(project_path: str = None, include_recommendations: bool = True) -> dict:
     """Comprehensive LSP diagnostics combining environment, health, and performance checks.
 
@@ -206,7 +187,7 @@ def swift_lsp_diagnostics(project_path: str = None, include_recommendations: boo
         project_path: Optional path to Swift project for testing
         include_recommendations: Whether to include setup recommendations
     """
-    from src.tools.swift_lsp_diagnostics import swift_lsp_diagnostics as diagnostics_func
+    from .tools.swift_lsp_diagnostics import swift_lsp_diagnostics as diagnostics_func
 
     return diagnostics_func(project_path, include_recommendations)
 
@@ -228,7 +209,7 @@ def swift_find_symbol_references(file_path: str, symbol_name: str) -> dict:
         }
 
     try:
-        from src.tools.swift_find_symbol_references import (
+        from .tools.swift_find_symbol_references import (
             swift_find_symbol_references as find_func,
         )
 
@@ -264,7 +245,7 @@ def swift_get_hover_info(file_path: str, line: int, character: int) -> dict:
         }
 
     try:
-        from src.tools.swift_get_hover_info import swift_get_hover_info as hover_func
+        from .tools.swift_get_hover_info import swift_get_hover_info as hover_func
 
         return hover_func(sanitized_path, line, character)
     except Exception as e:
@@ -284,7 +265,7 @@ def swift_get_declaration_context(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_get_declaration_context import (
+        from .tools.swift_get_declaration_context import (
             swift_get_declaration_context as context_func,
         )
 
@@ -314,7 +295,7 @@ def swift_get_symbol_definition(file_path: str, symbol_name: str) -> dict:
         }
 
     try:
-        from src.tools.swift_get_symbol_definition import (
+        from .tools.swift_get_symbol_definition import (
             swift_get_symbol_definition as definition_func,
         )
 
@@ -336,7 +317,7 @@ def swift_get_file_imports(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_get_file_imports import swift_get_file_imports as imports_func
+        from .tools.swift_get_file_imports import swift_get_file_imports as imports_func
 
         return imports_func(sanitized_path)
     except Exception as e:
@@ -356,7 +337,7 @@ def swift_summarize_file(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_summarize_file import swift_summarize_file as summarize_func
+        from .tools.swift_summarize_file import swift_summarize_file as summarize_func
 
         return summarize_func(sanitized_path)
     except Exception as e:
@@ -376,7 +357,7 @@ def swift_get_symbols_overview(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_get_symbols_overview import (
+        from .tools.swift_get_symbols_overview import (
             swift_get_symbols_overview as overview_func,
         )
 
@@ -399,85 +380,13 @@ def swift_validate_file(file_path: str) -> dict:
         return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
 
     try:
-        from src.tools.swift_validate_file import swift_validate_file as validate_func
+        from .tools.swift_validate_file import swift_validate_file as validate_func
 
         return validate_func(sanitized_path)
     except Exception as e:
         return {
             "success": False,
             "error": f"File validation failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swift_insert_before_symbol(file_path: str, symbol_name, content):
-    """Insert code directly before a specified Swift symbol using LSP positioning."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate symbol_name and content parameters
-    if not symbol_name or not isinstance(symbol_name, str):
-        return {
-            "success": False,
-            "error": "symbol_name must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(content, str):
-        return {
-            "success": False,
-            "error": "content must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from src.tools.swift_insert_before_symbol import (
-            swift_insert_before_symbol as insert_func,
-        )
-
-        return insert_func(sanitized_path, symbol_name, content)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Symbol insertion failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swift_insert_after_symbol(file_path: str, symbol_name, content):
-    """Insert code directly after a specified Swift symbol using LSP positioning."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate symbol_name and content parameters
-    if not symbol_name or not isinstance(symbol_name, str):
-        return {
-            "success": False,
-            "error": "symbol_name must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(content, str):
-        return {
-            "success": False,
-            "error": "content must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from src.tools.swift_insert_after_symbol import (
-            swift_insert_after_symbol as insert_func,
-        )
-
-        return insert_func(sanitized_path, symbol_name, content)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Symbol insertion failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
 
@@ -505,7 +414,7 @@ def swift_replace_symbol_body(file_path: str, symbol_name, new_body):
         }
 
     try:
-        from src.tools.swift_replace_symbol_body import (
+        from .tools.swift_replace_symbol_body import (
             swift_replace_symbol_body as replace_func,
         )
 
@@ -514,48 +423,6 @@ def swift_replace_symbol_body(file_path: str, symbol_name, new_body):
         return {
             "success": False,
             "error": f"Symbol body replacement failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-def swift_replace_regex(
-    file_path: str, regex_pattern: str, replacement: str, flags: str = ""
-) -> dict:
-    """Apply regex replacements in Swift file content with atomic file operations."""
-    # Validate file path for security (write operation)
-    is_valid, sanitized_path, error_msg = validate_swift_file_path_for_writing(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate regex parameters
-    if not regex_pattern or not isinstance(regex_pattern, str):
-        return {
-            "success": False,
-            "error": "regex_pattern must be a non-empty string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(replacement, str):
-        return {
-            "success": False,
-            "error": "replacement must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-    if not isinstance(flags, str):
-        return {
-            "success": False,
-            "error": "flags must be a string",
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from src.tools.swift_replace_regex import swift_replace_regex as replace_func
-
-        return replace_func(sanitized_path, regex_pattern, replacement, flags)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Regex replacement failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
 
@@ -601,7 +468,7 @@ def swift_search_pattern(
         }
 
     try:
-        from src.tools.swift_search_pattern import swift_search_pattern as search_func
+        from .tools.swift_search_pattern import swift_search_pattern as search_func
 
         return search_func(sanitized_path, pattern, is_regex, flags, context_lines)
     except Exception as e:
@@ -613,72 +480,42 @@ def swift_search_pattern(
 
 
 @server.tool()
-def swiftlens_initialize_project(project_path: str = ".", config_options: dict = None) -> dict:
-    """Initialize SwiftLens capabilities for an existing Swift project to enhance AI-assisted development.
-
-    Args:
-        project_path: Path to the existing Swift project (default: current directory)
-        config_options: Optional configuration settings for SwiftLens setup
-
-    Returns:
-        JSON response with initialization status and project analysis
-    """
-    # Validate project path for security
-    is_valid, sanitized_path, error_msg = validate_project_path(project_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    # Validate and sanitize config options
-    is_config_valid, sanitized_config, config_error = validate_config_options(config_options)
-    if not is_config_valid:
-        return {
-            "success": False,
-            "error": config_error,
-            "error_type": "VALIDATION_ERROR",
-        }
-
-    try:
-        from src.tools.swiftlens_initialize_project import (
-            swiftlens_initialize_project as init_func,
-        )
-
-        return init_func(sanitized_path, sanitized_config)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Project initialization failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
 def get_tool_help(tool_name: str = None) -> dict:
     """Get concise help for Swift tools. Pass tool_name for specific help, or None for all tools."""
-    from src.tools.get_tool_help import get_tool_help as help_func
+    from .tools.get_tool_help import get_tool_help as help_func
 
     return help_func(tool_name)
 
 
 def main():
     """Main entry point for uvx installation"""
+    # Initialize LSP manager here, not at module level
+    try:
+        global _lsp_manager
+        _lsp_manager = get_manager()
+    except ImportError:
+        logging.error("LSP components not available")
+        raise  # Let the exception bubble up for clean exit
+    except Exception as e:
+        logging.error(f"Failed to initialize LSP manager: {e}")
+        raise  # Let the exception bubble up for clean exit
+
     # Environment detection for dashboard
-    app_env = os.getenv("APP_ENV", "development")
-    enable_dashboard = (
-        os.getenv("ENABLE_DASHBOARD", "true" if app_env == "development" else "false").lower()
-        == "true"
-    )
+    # IMPORTANT: Dashboard MUST be disabled for MCP mode to prevent stdout contamination
+    enable_dashboard = os.getenv("ENABLE_DASHBOARD", "false").lower() == "true"
 
     if enable_dashboard:
-        # Start the dashboard server when explicitly enabled
-        print("🚀 Starting Swift Context MCP Server with Dashboard...")
+        # Log to file instead of stderr
+        logging.info("Starting Swift Context MCP Server with Dashboard...")
         start_dashboard_server()
     else:
-        # Clean stdio-only mode
-        print("🚀 Starting Swift Context MCP Server (stdio mode)")
+        # Log to file instead of stderr
+        logging.info("Starting Swift Context MCP Server (stdio mode)")
 
     # Run the MCP server with stdio transport
     server.run()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

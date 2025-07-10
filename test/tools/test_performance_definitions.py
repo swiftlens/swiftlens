@@ -18,7 +18,7 @@ import pytest
 pytestmark = pytest.mark.slow
 
 # Add src directory to path for imports
-from src.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
+from swiftlens.tools.swift_get_symbol_definition import swift_get_symbol_definition  # noqa: E402
 
 
 def parse_definition_output(output):

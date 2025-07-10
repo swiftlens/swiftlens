@@ -11,7 +11,7 @@ import time
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_get_symbols_overview import swift_get_symbols_overview
+from swiftlens.tools.swift_get_symbols_overview import swift_get_symbols_overview
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)

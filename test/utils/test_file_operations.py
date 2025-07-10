@@ -15,7 +15,7 @@ import time
 import pytest
 
 # Add src directory to path for imports
-from src.utils.file_operations import SwiftFileModifier
+from swiftlens.utils.file_operations import SwiftFileModifier
 
 
 @pytest.fixture

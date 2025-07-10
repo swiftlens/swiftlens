@@ -8,8 +8,8 @@ and optional context snippets. Token-optimized output for AI agents.
 import re
 from typing import Any
 
-from src.model.models import ErrorType, PatternMatch, PatternSearchResponse
-from src.utils.validation import validate_swift_file_path
+from swiftlens.model.models import ErrorType, PatternMatch, PatternSearchResponse
+from swiftlens.utils.validation import validate_swift_file_path
 
 # File validation is now handled by shared utility in utils.validation
 

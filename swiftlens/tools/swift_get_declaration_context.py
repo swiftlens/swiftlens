@@ -5,9 +5,9 @@ from typing import Any
 
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 
-from src.analysis.file_analyzer import FileAnalyzer
-from src.analysis.symbol_analyzer import SymbolAnalyzer
-from src.model.models import DeclarationContextResponse, ErrorType
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.analysis.symbol_analyzer import SymbolAnalyzer
+from swiftlens.model.models import DeclarationContextResponse, ErrorType
 
 
 def swift_get_declaration_context(file_path: str) -> dict[str, Any]:

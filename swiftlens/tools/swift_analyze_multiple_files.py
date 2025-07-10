@@ -7,8 +7,8 @@ from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from lsp.timeouts import LSPTimeouts
 from pydantic import ValidationError
 
-from src.analysis.file_analyzer import FileAnalyzer
-from src.model.models import (
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import (
     ErrorType,
     FileAnalysisResponse,
     MultiFileAnalysisResponse,

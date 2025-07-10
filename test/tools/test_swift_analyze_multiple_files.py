@@ -10,7 +10,7 @@ import os
 import pytest
 
 # Add src directory to path for imports
-from src.tools.swift_analyze_multiple_files import swift_analyze_multiple_files
+from swiftlens.tools.swift_analyze_multiple_files import swift_analyze_multiple_files
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)

@@ -6,8 +6,8 @@ from typing import Any
 from lsp.managed_client import find_swift_project_root, managed_lsp_client
 from pydantic import ValidationError
 
-from src.analysis.file_analyzer import FileAnalyzer
-from src.model.models import ErrorType, SymbolReference, SymbolReferenceResponse
+from swiftlens.analysis.file_analyzer import FileAnalyzer
+from swiftlens.model.models import ErrorType, SymbolReference, SymbolReferenceResponse
 
 
 def swift_find_symbol_references(file_path: str, symbol_name: str, client=None) -> dict[str, Any]:
@@ -61,9 +61,6 @@ def swift_find_symbol_references(file_path: str, symbol_name: str, client=None) 
             with managed_lsp_client(project_root=project_root, timeout=10.0) as new_client:
                 analyzer = FileAnalyzer(new_client)
                 result_dict = analyzer.find_symbol_references(file_path, symbol_name)
-                print(
-                    f"DEBUG: LSP result: success={result_dict.get('success')}, refs={len(result_dict.get('references', []))}"
-                )
 
         if result_dict["success"]:
             # Convert references to Pydantic models
