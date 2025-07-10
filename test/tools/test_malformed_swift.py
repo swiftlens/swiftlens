@@ -20,7 +20,6 @@ pytestmark = pytest.mark.malformed
 # Add src directory to path for imports
 from swiftlens.tools.swift_analyze_file import swift_analyze_file  # noqa: E402
 from swiftlens.tools.swift_find_symbol_references import swift_find_symbol_references  # noqa: E402
-from swiftlens.tools.swift_format_context import swift_format_context  # noqa: E402
 from swiftlens.tools.swift_get_declaration_context import (
     swift_get_declaration_context,  # noqa: E402
 )
@@ -248,7 +247,6 @@ def malformed_swift_files():
     [
         (swift_analyze_file, "swift_analyze_file"),
         (swift_get_declaration_context, "swift_get_declaration_context"),
-        (swift_format_context, "swift_format_context"),
         (swift_summarize_file, "swift_summarize_file"),
         (swift_get_symbols_overview, "swift_get_symbols_overview"),
         (swift_validate_file, "swift_validate_file"),
@@ -290,7 +288,6 @@ def test_malformed_files_graceful_handling_summary(malformed_swift_files):
     tools_to_test = [
         (swift_analyze_file, "swift_analyze_file"),
         (swift_get_declaration_context, "swift_get_declaration_context"),
-        (swift_format_context, "swift_format_context"),
         (swift_summarize_file, "swift_summarize_file"),
         (swift_get_symbols_overview, "swift_get_symbols_overview"),
         (swift_validate_file, "swift_validate_file"),

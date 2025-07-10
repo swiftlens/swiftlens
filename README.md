@@ -106,7 +106,6 @@ SwiftLens provides 18 tools for Swift code analysis:
 
 - `swift_analyze_file` - Analyze structure and symbols in a Swift file
 - `swift_analyze_multiple_files` - Batch analyze multiple files
-- `swift_format_context` - Format code for optimal AI consumption
 - `swift_summarize_file` - Get symbol counts and file summary
 - `swift_get_symbols_overview` - Extract top-level type declarations
 - `swift_get_declaration_context` - Get fully-qualified symbol paths

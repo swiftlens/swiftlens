@@ -265,7 +265,6 @@ class MCPClientManager:
             "swift_analyze_file",
             "swift_get_symbols_overview",
             "swift_find_symbol_references",
-            "swift_format_context",
             "swift_validate_file",
         ]
 

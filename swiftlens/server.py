@@ -52,7 +52,7 @@ Your primary directive is to operate with maximum efficiency, minimizing token u
 1.  **Orient (High-Level Scan):** ALWAYS start with `swift_get_symbols_overview`. This gives you a low-cost architectural map of a file before committing to a full analysis.
 2.  **Investigate (Targeted Exploration):** Use tools like `swift_find_symbol_references`, `swift_get_symbol_definition`, and `swift_get_hover_info` to trace relationships and gather specific details without reading entire files.
 3.  **Analyze (Deep Dive):** Only use `swift_analyze_file` when a comprehensive, full-file symbol analysis is absolutely necessary for the task.
-4.  **Present (Optimized Context):** When you need to present code context to the user or for your own reasoning, use `swift_format_context` to create a token-optimized representation.
+4.  **Present (Clean Analysis):** When presenting analysis results, focus on the essential information needed for the task.
 
 ### Code Modification Workflow
 When asked to modify code, you must act as a careful and methodical Swift engineer.
@@ -159,27 +159,6 @@ def swift_analyze_multiple_files(file_paths: list[str]) -> dict:
         return {
             "success": False,
             "error": f"Multiple file analysis failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-@log_tool_execution("swift_format_context")
-def swift_format_context(file_path: str) -> dict:
-    """Analyze a Swift file and return formatted context string optimized for AI models."""
-    # Validate file path for security
-    is_valid, sanitized_path, error_msg = validate_swift_file_path(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    try:
-        from .tools.swift_format_context import swift_format_context as format_func
-
-        return format_func(sanitized_path)
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Context formatting failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
 

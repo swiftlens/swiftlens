@@ -42,20 +42,6 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "swift_analyze_multiple_files(['A.swift', 'B.swift']) -> file-by-file symbol breakdown"
             ],
         },
-        "swift_format_context": {
-            "purpose": "Generate AI-optimized context string from Swift file analysis",
-            "use_cases": [
-                "Prepare file context for AI code generation",
-                "Create condensed file summaries",
-                "Feed structured data to other AI tools",
-            ],
-            "parameters": {"file_path": "Path to Swift file"},
-            "output_format": {
-                "context": "Formatted string",
-                "format": "optimized for AI consumption",
-            },
-            "examples": ["swift_format_context('App.swift') -> structured context for AI tools"],
-        },
         "swift_check_environment": {
             "purpose": "Validate Swift development environment setup",
             "use_cases": [

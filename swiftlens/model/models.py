@@ -324,19 +324,6 @@ class FileValidationResponse(BaseModel):
     _validate_file_path = field_validator("file_path")(validate_swift_file_path)
 
 
-class FormattedContextResponse(BaseModel):
-    """Response for swift_format_context tool."""
-
-    success: bool = Field(description="Operation success status")
-    file_path: str = Field(description="Analyzed file path")
-    formatted_context: str = Field(description="AI-optimized context string")
-    token_count: int = Field(description="Estimated token count", ge=0)
-    error: str | None = Field(default=None, description="Error message if failed")
-    error_type: ErrorType | None = Field(default=None, description="Error category")
-
-    _validate_file_path = field_validator("file_path")(validate_swift_file_path)
-
-
 class MultiFileAnalysisResponse(BaseModel):
     """Response for swift_analyze_multiple_files tool."""
 
