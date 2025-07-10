@@ -2,7 +2,6 @@
 
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +23,6 @@ debug_enabled = os.environ.get("MCP_DEBUG", "").lower() in ["true", "1", "yes"]
 
 # Constants
 MAX_FILES = 500  # Maximum number of files to process
-MAX_WORKERS = min(4, (os.cpu_count() or 1) + 1)  # Dynamic thread count
 
 
 def swift_find_symbol_references_files(
@@ -64,29 +62,32 @@ def swift_find_symbol_references_files(
             error_type=ErrorType.VALIDATION_ERROR,
         ).model_dump()
 
-    # Normalize and deduplicate file paths using Path.resolve()
-    normalized_paths = []
-    seen_paths = set()
+    # Normalize and deduplicate file paths
+    # Keep original paths for result keys but use resolved paths for deduplication
+    unique_paths = []
+    seen_resolved = set()
+
     for path in file_paths:
         try:
-            # Use Path.resolve() for full normalization including symlink resolution
-            normalized = Path(path).resolve(strict=False)
-            normalized_str = str(normalized)
-            
-            if normalized_str not in seen_paths:
-                seen_paths.add(normalized_str)
-                normalized_paths.append(normalized_str)
+            # Use Path.resolve() for deduplication check
+            resolved = Path(path).resolve(strict=False)
+            resolved_str = str(resolved)
+
+            if resolved_str not in seen_resolved:
+                seen_resolved.add(resolved_str)
+                # Keep the original path format for consistency
+                unique_paths.append(path)
         except (OSError, ValueError) as e:
             # Handle invalid paths gracefully
-            logger.debug(f"Failed to normalize path {path}: {e}")
-            # Fall back to simple normalization
+            logger.debug(f"Failed to resolve path {path}: {e}")
+            # Fall back to simple normalization for deduplication
             normalized = os.path.abspath(path) if not os.path.isabs(path) else path
             normalized = os.path.normpath(normalized)
-            if normalized not in seen_paths:
-                seen_paths.add(normalized)
-                normalized_paths.append(normalized)
-    
-    file_paths = normalized_paths
+            if normalized not in seen_resolved:
+                seen_resolved.add(normalized)
+                unique_paths.append(path)
+
+    file_paths = unique_paths
 
     if not symbol_name or (isinstance(symbol_name, str) and not symbol_name.strip()):
         return MultiFileSymbolReferenceResponse(
@@ -107,31 +108,35 @@ def swift_find_symbol_references_files(
             # Use provided client (performance optimization for tests)
             analyzer = FileAnalyzer(client)
 
-            # Process files in parallel using ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                future_to_file = {
-                    executor.submit(_process_single_file, analyzer, fp, symbol_name): fp
-                    for fp in file_paths
-                }
-
-                for future in as_completed(future_to_file):
-                    file_path = future_to_file[future]
-                    try:
-                        result = future.result()
-                        file_results[file_path] = result
-                        if result.success:
-                            total_references += result.reference_count
-                    except Exception as e:
-                        # Handle errors from individual file processing
-                        file_results[file_path] = SymbolReferenceResponse(
-                            success=False,
-                            file_path=file_path,
-                            symbol_name=symbol_name,
-                            references=[],
-                            reference_count=0,
-                            error=str(e),
-                            error_type=ErrorType.LSP_ERROR,
-                        )
+            # IMPORTANT: Process files sequentially due to LSP client thread safety limitations
+            # See /swiftlens-core/devs-docs/THREAD_SAFETY_IMPLEMENTATION.md for details
+            # TODO: Enable parallel processing once LSP client is made thread-safe
+            for file_path in file_paths:
+                try:
+                    result = _process_single_file(analyzer, file_path, symbol_name)
+                    file_results[file_path] = result
+                    if result.success:
+                        total_references += result.reference_count
+                except (TimeoutError, ConnectionError) as e:
+                    file_results[file_path] = SymbolReferenceResponse(
+                        success=False,
+                        file_path=file_path,
+                        symbol_name=symbol_name,
+                        references=[],
+                        reference_count=0,
+                        error=f"LSP communication error: {str(e)}",
+                        error_type=ErrorType.LSP_ERROR,
+                    )
+                except (OSError, RuntimeError, ValueError) as e:
+                    file_results[file_path] = SymbolReferenceResponse(
+                        success=False,
+                        file_path=file_path,
+                        symbol_name=symbol_name,
+                        references=[],
+                        reference_count=0,
+                        error=str(e),
+                        error_type=ErrorType.LSP_ERROR,
+                    )
         else:
             # Find Swift project root for proper LSP initialization
             # Use the first file path to determine project root
@@ -147,31 +152,35 @@ def swift_find_symbol_references_files(
             ) as new_client:
                 analyzer = FileAnalyzer(new_client)
 
-                # Process files in parallel using ThreadPoolExecutor
-                with ThreadPoolExecutor(max_workers=4) as executor:
-                    future_to_file = {
-                        executor.submit(_process_single_file, analyzer, fp, symbol_name): fp
-                        for fp in file_paths
-                    }
-
-                    for future in as_completed(future_to_file):
-                        file_path = future_to_file[future]
-                        try:
-                            result = future.result()
-                            file_results[file_path] = result
-                            if result.success:
-                                total_references += result.reference_count
-                        except Exception as e:
-                            # Handle errors from individual file processing
-                            file_results[file_path] = SymbolReferenceResponse(
-                                success=False,
-                                file_path=file_path,
-                                symbol_name=symbol_name,
-                                references=[],
-                                reference_count=0,
-                                error=str(e),
-                                error_type=ErrorType.LSP_ERROR,
-                            )
+                # IMPORTANT: Process files sequentially due to LSP client thread safety limitations
+                # See /swiftlens-core/devs-docs/THREAD_SAFETY_IMPLEMENTATION.md for details
+                # TODO: Enable parallel processing once LSP client is made thread-safe
+                for file_path in file_paths:
+                    try:
+                        result = _process_single_file(analyzer, file_path, symbol_name)
+                        file_results[file_path] = result
+                        if result.success:
+                            total_references += result.reference_count
+                    except (TimeoutError, ConnectionError) as e:
+                        file_results[file_path] = SymbolReferenceResponse(
+                            success=False,
+                            file_path=file_path,
+                            symbol_name=symbol_name,
+                            references=[],
+                            reference_count=0,
+                            error=f"LSP communication error: {str(e)}",
+                            error_type=ErrorType.LSP_ERROR,
+                        )
+                    except (OSError, RuntimeError, ValueError) as e:
+                        file_results[file_path] = SymbolReferenceResponse(
+                            success=False,
+                            file_path=file_path,
+                            symbol_name=symbol_name,
+                            references=[],
+                            reference_count=0,
+                            error=str(e),
+                            error_type=ErrorType.LSP_ERROR,
+                        )
 
         return MultiFileSymbolReferenceResponse(
             success=True,
