@@ -38,8 +38,14 @@ AI Agent (Claude/GPT) → MCP Protocol → SwiftLens → SourceKit-LSP → Swift
 ### Quick Start
 
 ```bash
-# Install from TestPyPI (current release)
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ swiftlens
+{
+  "mcpServers": {
+    "swiftlens": {
+      "command": "uvx",
+      "args":[ "swiftlens" ]
+    }
+  }
+}
 ```
 
 ### First Time Running?
@@ -80,6 +86,24 @@ Note: The `--index-url` and `--extra-index-url` arguments ensure SwiftLens is in
 
 ## Usage
 
+### Quick Start with Slash Command
+
+Once SwiftLens is configured in Claude Code, you can quickly get started by using the built-in slash command:
+
+```
+/swiftlens_initial_prompt
+```
+
+This command provides a comprehensive guide to all SwiftLens tools, including:
+
+- Overview of available tools organized by category
+- Best practices for efficient token usage
+- Step-by-step workflows for common tasks
+- Natural language usage examples
+- Performance optimization tips
+
+The slash command is the fastest way to onboard your AI agent with SwiftLens capabilities.
+
 ### Building Your Project Index
 
 SwiftLens requires an index store for cross-file analysis. Build it with:
@@ -100,7 +124,7 @@ swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 
 ### Available Tools
 
-SwiftLens provides 18 tools for Swift code analysis:
+SwiftLens provides 14 tools for Swift code analysis:
 
 #### Single-File Analysis (No Index Required)
 
@@ -115,7 +139,7 @@ SwiftLens provides 18 tools for Swift code analysis:
 
 #### Cross-File Analysis (Requires Index)
 
-- `swift_find_symbol_references` - Find all references to a symbol
+- `swift_find_symbol_references_files` - Find all references to a symbol for given files
 - `swift_get_symbol_definition` - Jump to symbol definition
 - `swift_get_hover_info` - Get type info and documentation
 
