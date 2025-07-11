@@ -6,7 +6,12 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from lsp.client import SwiftLSPClient
+
+try:
+    from lsp.client import SwiftLSPClient
+except ImportError:
+    # Create a mock if not available during tests
+    SwiftLSPClient = object
 
 from swiftlens.model.models import ErrorType, MultiFileSymbolReferenceResponse
 from swiftlens.tools.swift_find_symbol_references_files import (
@@ -187,68 +192,78 @@ let package = Package(
             with patch(
                 "swiftlens.tools.swift_find_symbol_references_files.managed_lsp_client"
             ) as mock_lsp:
-                with patch(
-                    "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
-                ) as mock_process:
-                    # Also need to patch the validation to pass
+                # Also mock the client manager for thread-local implementation
+                with patch("swiftlens.utils.thread_local_lsp.get_manager") as mock_manager:
                     with patch(
-                        "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
-                    ) as mock_validate:
-                        from swiftlens.model.models import SymbolReferenceResponse
+                        "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
+                    ) as mock_process:
+                        # Also need to patch the validation to pass
+                        with patch(
+                            "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
+                        ) as mock_validate:
+                            from swiftlens.model.models import SymbolReferenceResponse
 
-                        # Mock validation to always pass
-                        mock_validate.side_effect = lambda fp, sn, allow_outside: (True, fp, None)
-
-                        # Mock the context manager
-                        mock_lsp.return_value.__enter__ = MagicMock(return_value=MagicMock())
-                        mock_lsp.return_value.__exit__ = MagicMock(return_value=None)
-
-                        def mock_process_file(analyzer, file_path, symbol, analyzer_lock=None):
-                            # Record when processing starts
-                            start_time = time.time()
-                            with processing_lock:
-                                processing_times.append(("start", start_time, file_path))
-
-                            # Simulate some processing time
-                            time.sleep(0.1)
-
-                            # Record when processing ends
-                            end_time = time.time()
-                            with processing_lock:
-                                processing_times.append(("end", end_time, file_path))
-
-                            return SymbolReferenceResponse(
-                                success=True,
-                                file_path=file_path,
-                                symbol_name=symbol,
-                                references=[],
-                                reference_count=1,
+                            # Mock validation to always pass
+                            mock_validate.side_effect = lambda fp, sn, allow_outside: (
+                                True,
+                                fp,
+                                None,
                             )
 
-                        mock_process.side_effect = mock_process_file
+                            # Mock the context manager
+                            mock_lsp.return_value.__enter__ = MagicMock(return_value=MagicMock())
+                            mock_lsp.return_value.__exit__ = MagicMock(return_value=None)
 
-                        # Process multiple files
-                        start = time.time()
-                        swift_find_symbol_references_files(test_files, "foo")
-                        total_time = time.time() - start
+                            # Mock the client manager
+                            mock_client = MagicMock()
+                            mock_manager.return_value.get_client.return_value = mock_client
 
-                        # With parallel processing (4 workers), 4 files with 0.1s each
-                        # should complete in roughly 0.1s, not 0.4s
-                        assert total_time < 0.3, (
-                            f"Processing took {total_time}s, expected < 0.3s with parallel processing"
-                        )
+                            def mock_process_file(analyzer, file_path, symbol, analyzer_lock=None):
+                                # Record when processing starts
+                                start_time = time.time()
+                                with processing_lock:
+                                    processing_times.append(("start", start_time, file_path))
 
-                        # Verify that files were processed in parallel
-                        # Check that multiple files started processing before others finished
-                        starts = [t for t in processing_times if t[0] == "start"]
-                        ends = [t for t in processing_times if t[0] == "end"]
+                                # Simulate some processing time
+                                time.sleep(0.1)
 
-                        # At least some files should start before others end (parallel)
-                        assert ends, "No processing occurred"
-                        parallel_starts = sum(1 for s in starts if s[1] < ends[0][1])
-                        assert parallel_starts > 1, (
-                            "Files should be processed in parallel, not sequentially"
-                        )
+                                # Record when processing ends
+                                end_time = time.time()
+                                with processing_lock:
+                                    processing_times.append(("end", end_time, file_path))
+
+                                return SymbolReferenceResponse(
+                                    success=True,
+                                    file_path=file_path,
+                                    symbol_name=symbol,
+                                    references=[],
+                                    reference_count=1,
+                                )
+
+                            mock_process.side_effect = mock_process_file
+
+                            # Process multiple files
+                            start = time.time()
+                            swift_find_symbol_references_files(test_files, "foo")
+                            total_time = time.time() - start
+
+                            # With parallel processing (4 workers), 4 files with 0.1s each
+                            # should complete in roughly 0.1s, not 0.4s
+                            assert total_time < 0.3, (
+                                f"Processing took {total_time}s, expected < 0.3s with parallel processing"
+                            )
+
+                            # Verify that files were processed in parallel
+                            # Check that multiple files started processing before others finished
+                            starts = [t for t in processing_times if t[0] == "start"]
+                            ends = [t for t in processing_times if t[0] == "end"]
+
+                            # At least some files should start before others end (parallel)
+                            assert ends, "No processing occurred"
+                            parallel_starts = sum(1 for s in starts if s[1] < ends[0][1])
+                            assert parallel_starts > 1, (
+                                "Files should be processed in parallel, not sequentially"
+                            )
 
     def test_error_handling_specificity(self):
         """Test that specific error types are properly handled with mocked client."""
@@ -257,22 +272,32 @@ let package = Package(
             with open(test_file, "w") as f:
                 f.write("class Test {}")
 
-            # Test different error types
+            # Test different error types with expected error classifications
             error_scenarios = [
-                (TimeoutError("LSP timeout"), "LSP communication error: LSP timeout"),
+                (
+                    TimeoutError("LSP timeout"),
+                    "LSP communication error: LSP timeout",
+                    ErrorType.LSP_ERROR,
+                ),
                 (
                     ConnectionError("Connection refused"),
                     "LSP communication error: Connection refused",
+                    ErrorType.LSP_ERROR,
                 ),
-                (OSError("File system error"), "File system error"),
-                (RuntimeError("Runtime issue"), "Runtime issue"),
-                (ValueError("Invalid value"), "Invalid value"),
+                (OSError("File system error"), "File system error", ErrorType.VALIDATION_ERROR),
+                (RuntimeError("Runtime issue"), "Runtime issue", ErrorType.VALIDATION_ERROR),
+                (
+                    RuntimeError("LSP connection failed"),
+                    "LSP connection failed",
+                    ErrorType.LSP_ERROR,
+                ),
+                (ValueError("Invalid value"), "Invalid value", ErrorType.VALIDATION_ERROR),
             ]
 
             # Create a mock client to bypass LSP initialization
             mock_client = MagicMock(spec=SwiftLSPClient)
 
-            for error, expected_msg in error_scenarios:
+            for error, expected_msg, expected_error_type in error_scenarios:
                 with patch(
                     "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
                 ) as mock_process:
@@ -296,7 +321,7 @@ let package = Package(
                         file_result = response.files[test_file]
                         assert not file_result.success
                         assert expected_msg in file_result.error
-                        assert file_result.error_type == ErrorType.LSP_ERROR
+                        assert file_result.error_type == expected_error_type
 
 
 if __name__ == "__main__":
