@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -60,17 +61,36 @@ class TestThreadSafety:
                         reference_count=0,
                     )
 
-                mock_process.side_effect = lambda analyzer, fp, sym: create_response(fp)
+                mock_process.side_effect = (
+                    lambda analyzer, fp, sym, analyzer_lock=None: create_response(fp)
+                )
 
-                # Process files
-                swift_find_symbol_references_files(test_files, "doSomething", client=mock_client)
+                # Also need to patch validation
+                with patch(
+                    "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
+                ) as mock_validate:
+                    # Mock validation to always pass
+                    mock_validate.side_effect = lambda fp, sn, allow_outside: (True, fp, None)
 
-                # Verify sequential processing
-                assert len(call_order) == 5, "Should have processed all 5 files"
-                # Verify files were processed in order (sequential, not parallel)
-                for i, (op, uri) in enumerate(call_order):
-                    assert op == "open"
-                    assert f"Test{i}.swift" in uri
+                    # Process files
+                    swift_find_symbol_references_files(
+                        test_files, "doSomething", client=mock_client
+                    )
+
+                    # Verify all files were processed
+                    assert len(call_order) == 5, "Should have processed all 5 files"
+
+                    # Extract the file names from the URIs
+                    processed_files = []
+                    for op, uri in call_order:
+                        assert op == "open"
+                        # Extract filename from URI
+                        filename = uri.split("/")[-1]
+                        processed_files.append(filename)
+
+                    # Check that all test files were processed (order doesn't matter with parallel processing)
+                    expected_files = {f"Test{i}.swift" for i in range(5)}
+                    assert set(processed_files) == expected_files
 
     def test_max_files_limit(self):
         """Test that max files limit is enforced."""
@@ -87,73 +107,72 @@ class TestThreadSafety:
         assert "Maximum allowed is 500" in response.error
 
     def test_path_normalization_with_symlinks(self):
-        """Test that Path.resolve() properly handles symlinks and normalization."""
-        with tempfile.TemporaryDirectory() as temp_dir:
+        """Test that symlinks are properly rejected by validation."""
+        # Use a fixed directory that we know doesn't have symlinks in its path
+        test_dir = os.path.abspath(os.path.join(os.getcwd(), "test_temp_files"))
+        os.makedirs(test_dir, exist_ok=True)
+
+        try:
             # Create a real file
-            real_file = os.path.join(temp_dir, "real.swift")
+            real_file = os.path.join(test_dir, "real.swift")
             with open(real_file, "w") as f:
                 f.write("class Test {}")
 
             # Create a symlink
-            symlink = os.path.join(temp_dir, "link.swift")
+            symlink = os.path.join(test_dir, "link.swift")
+            if os.path.exists(symlink):
+                os.remove(symlink)
             os.symlink(real_file, symlink)
 
-            # Create paths with different representations
-            paths = [
-                real_file,
-                symlink,
-                os.path.join(temp_dir, ".", "real.swift"),  # With dot
-                os.path.join(temp_dir, "subdir", "..", "real.swift"),  # With ..
-            ]
+            # Mock LSP client to avoid actual LSP initialization
+            with patch(
+                "swiftlens.tools.swift_find_symbol_references_files.managed_lsp_client"
+            ) as mock_lsp:
+                with patch("swiftlens.tools.swift_find_symbol_references_files.FileAnalyzer"):
+                    # Mock the context manager
+                    mock_lsp.return_value.__enter__ = MagicMock(return_value=MagicMock())
+                    mock_lsp.return_value.__exit__ = MagicMock(return_value=None)
 
-            with patch("swiftlens.tools.swift_find_symbol_references_files.FileAnalyzer"):
-                with patch("swiftlens.tools.swift_find_symbol_references_files.managed_lsp_client"):
-                    # Mock to avoid actual LSP calls
-                    with patch(
-                        "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
-                    ) as mock_process:
-                        from swiftlens.model.models import SymbolReferenceResponse
+                    # Test with just the symlink to verify it's rejected
+                    result = swift_find_symbol_references_files([symlink], "Test")
+                    response = MultiFileSymbolReferenceResponse.model_validate(result)
 
-                        mock_process.return_value = SymbolReferenceResponse(
-                            success=True,
-                            file_path=real_file,  # Use real_file instead of test_file
-                            symbol_name="Test",
-                            references=[],
-                            reference_count=0,
-                        )
+                    # The response should be successful overall but the symlink should be rejected
+                    assert response.success
+                    assert not response.files[symlink].success
+                    assert "symbolic link" in response.files[symlink].error.lower()
+                    assert response.files[symlink].error_type == ErrorType.VALIDATION_ERROR
 
-                        swift_find_symbol_references_files(paths, "Test")
+        finally:
+            # Clean up
+            if os.path.exists(symlink):
+                os.remove(symlink)
+            if os.path.exists(real_file):
+                os.remove(real_file)
+            if os.path.exists(test_dir):
+                os.rmdir(test_dir)
 
-                        # Should only process the file once due to deduplication
-                        assert mock_process.call_count == 1
-
-    def test_concurrent_requests_should_not_use_threadpool(self):
-        """Verify that even if called from multiple threads, no ThreadPoolExecutor is used internally."""
+    def test_parallel_processing_enabled(self):
+        """Verify that ThreadPoolExecutor is now used for parallel processing."""
         import threading
 
-        # Track if ThreadPoolExecutor is imported or used
-        threadpool_used = threading.Event()
+        # Track concurrent processing
+        processing_times = []
+        processing_lock = threading.Lock()
 
-        import builtins
-
-        original_import = builtins.__import__
-
-        def track_imports(name, *args, **kwargs):
-            if "concurrent.futures" in name and "ThreadPoolExecutor" in str(args):
-                threadpool_used.set()
-            return original_import(name, *args, **kwargs)
-
-        with patch.object(builtins, "__import__", side_effect=track_imports):
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Create test file
-                test_file = os.path.join(temp_dir, "Test.swift")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create multiple test files
+            test_files = []
+            for i in range(4):
+                test_file = os.path.join(temp_dir, f"Test{i}.swift")
                 with open(test_file, "w") as f:
-                    f.write("class Test { func foo() {} }")
+                    f.write(f"class Test{i} {{ func foo() {{}} }}")
+                test_files.append(test_file)
 
-                # Create Package.swift to make it a valid Swift project
-                package_file = os.path.join(temp_dir, "Package.swift")
-                with open(package_file, "w") as f:
-                    f.write("""// swift-tools-version:5.7
+            # Create Package.swift to make it a valid Swift project
+            package_file = os.path.join(temp_dir, "Package.swift")
+            with open(package_file, "w") as f:
+                f.write("""// swift-tools-version:5.7
 import PackageDescription
 
 let package = Package(
@@ -164,41 +183,72 @@ let package = Package(
 )
 """)
 
-                # Mock the processing to be fast
+            # Mock LSP client and processing to track concurrent execution
+            with patch(
+                "swiftlens.tools.swift_find_symbol_references_files.managed_lsp_client"
+            ) as mock_lsp:
                 with patch(
                     "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
                 ) as mock_process:
-                    from swiftlens.model.models import SymbolReferenceResponse
+                    # Also need to patch the validation to pass
+                    with patch(
+                        "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
+                    ) as mock_validate:
+                        from swiftlens.model.models import SymbolReferenceResponse
 
-                    mock_process.return_value = SymbolReferenceResponse(
-                        success=True,
-                        file_path=test_file,
-                        symbol_name="foo",
-                        references=[],
-                        reference_count=1,
-                    )
+                        # Mock validation to always pass
+                        mock_validate.side_effect = lambda fp, sn, allow_outside: (True, fp, None)
 
-                    # Call from multiple threads
-                    results = []
+                        # Mock the context manager
+                        mock_lsp.return_value.__enter__ = MagicMock(return_value=MagicMock())
+                        mock_lsp.return_value.__exit__ = MagicMock(return_value=None)
 
-                    def call_find_references():
-                        result = swift_find_symbol_references_files([test_file], "foo")
-                        results.append(result)
+                        def mock_process_file(analyzer, file_path, symbol, analyzer_lock=None):
+                            # Record when processing starts
+                            start_time = time.time()
+                            with processing_lock:
+                                processing_times.append(("start", start_time, file_path))
 
-                    threads = []
-                    for _ in range(3):
-                        t = threading.Thread(target=call_find_references)
-                        threads.append(t)
-                        t.start()
+                            # Simulate some processing time
+                            time.sleep(0.1)
 
-                    for t in threads:
-                        t.join()
+                            # Record when processing ends
+                            end_time = time.time()
+                            with processing_lock:
+                                processing_times.append(("end", end_time, file_path))
 
-                    # Verify all calls completed
-                    assert len(results) == 3
+                            return SymbolReferenceResponse(
+                                success=True,
+                                file_path=file_path,
+                                symbol_name=symbol,
+                                references=[],
+                                reference_count=1,
+                            )
 
-                    # Verify ThreadPoolExecutor was not used
-                    assert not threadpool_used.is_set(), "ThreadPoolExecutor should not be used"
+                        mock_process.side_effect = mock_process_file
+
+                        # Process multiple files
+                        start = time.time()
+                        swift_find_symbol_references_files(test_files, "foo")
+                        total_time = time.time() - start
+
+                        # With parallel processing (4 workers), 4 files with 0.1s each
+                        # should complete in roughly 0.1s, not 0.4s
+                        assert total_time < 0.3, (
+                            f"Processing took {total_time}s, expected < 0.3s with parallel processing"
+                        )
+
+                        # Verify that files were processed in parallel
+                        # Check that multiple files started processing before others finished
+                        starts = [t for t in processing_times if t[0] == "start"]
+                        ends = [t for t in processing_times if t[0] == "end"]
+
+                        # At least some files should start before others end (parallel)
+                        assert ends, "No processing occurred"
+                        parallel_starts = sum(1 for s in starts if s[1] < ends[0][1])
+                        assert parallel_starts > 1, (
+                            "Files should be processed in parallel, not sequentially"
+                        )
 
     def test_error_handling_specificity(self):
         """Test that specific error types are properly handled with mocked client."""
@@ -226,21 +276,27 @@ let package = Package(
                 with patch(
                     "swiftlens.tools.swift_find_symbol_references_files._process_single_file"
                 ) as mock_process:
-                    mock_process.side_effect = error
+                    # Also need to patch validation to pass
+                    with patch(
+                        "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
+                    ) as mock_validate:
+                        # Make validation pass
+                        mock_validate.return_value = (True, test_file, None)
+                        mock_process.side_effect = error
 
-                    # Use the mocked client to bypass LSP initialization
-                    result = swift_find_symbol_references_files(
-                        [test_file], "Test", client=mock_client
-                    )
-                    response = MultiFileSymbolReferenceResponse.model_validate(result)
+                        # Use the mocked client to bypass LSP initialization
+                        result = swift_find_symbol_references_files(
+                            [test_file], "Test", client=mock_client
+                        )
+                        response = MultiFileSymbolReferenceResponse.model_validate(result)
 
-                    # Should still return success=True for the overall operation
-                    assert response.success
-                    # But the individual file should have failed
-                    file_result = response.files[test_file]
-                    assert not file_result.success
-                    assert expected_msg in file_result.error
-                    assert file_result.error_type == ErrorType.LSP_ERROR
+                        # Should still return success=True for the overall operation
+                        assert response.success
+                        # But the individual file should have failed
+                        file_result = response.files[test_file]
+                        assert not file_result.success
+                        assert expected_msg in file_result.error
+                        assert file_result.error_type == ErrorType.LSP_ERROR
 
 
 if __name__ == "__main__":

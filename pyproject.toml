@@ -145,7 +145,8 @@ markers = [
     "lsp_comprehensive: marks tests requiring built Swift environment with IndexStoreDB",
     "malformed: marks tests that use malformed Swift code (slow, excluded by default)",
     "slow: marks tests that are inherently slow (concurrent, performance, cross-file resolution)",
-    "asyncio: marks tests that use asyncio"
+    "asyncio: marks tests that use asyncio",
+    "integration: marks integration tests that verify real parallel execution"
 ]
 addopts = [
     "--tb=short",

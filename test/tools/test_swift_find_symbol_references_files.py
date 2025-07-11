@@ -36,7 +36,7 @@ Test Strategy:
 
 import os
 import tempfile
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -351,14 +351,20 @@ class TestSwiftFindSymbolReferencesFiles:
         try:
             module.FileAnalyzer = mock_file_analyzer_constructor
 
-            # Call with mock client
-            result = swift_find_symbol_references_files(file_paths, symbol, client=mock_client)
+            # Also mock validation to pass
+            with patch(
+                "swiftlens.tools.swift_find_symbol_references_files._validate_file_path"
+            ) as mock_validate:
+                mock_validate.return_value = (True, file_paths[0], None)
 
-            # Should use the provided client path
-            assert result["success"] is True
+                # Call with mock client
+                result = swift_find_symbol_references_files(file_paths, symbol, client=mock_client)
 
-            # Verify the analyzer method was called for our file
-            mock_analyzer.find_symbol_references.assert_called_once_with(file_paths[0], symbol)
+                # Should use the provided client path
+                assert result["success"] is True
+
+                # Verify the analyzer method was called for our file
+                mock_analyzer.find_symbol_references.assert_called_once_with(file_paths[0], symbol)
 
         finally:
             # Restore original
