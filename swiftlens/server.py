@@ -41,9 +41,7 @@ atexit.register(cleanup_manager)
 atexit.register(stop_dashboard_server)
 
 # Create the FastMCP server
-server = FastMCP(
-    name="Swift Context Server"
-)
+server = FastMCP(name="Swift Context Server")
 
 
 @server.tool()

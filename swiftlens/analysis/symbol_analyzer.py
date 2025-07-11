@@ -22,6 +22,22 @@ class SymbolAnalyzer:
         kind = symbol_data.get("kind", 0)
         kind_name = SymbolKind.get_name(kind)
 
+        # Extract position information from range or selectionRange
+        line = 1  # Default to line 1
+        character = 0  # Default to character 0
+
+        # Try to get position from selectionRange first (more precise)
+        selection_range = symbol_data.get("selectionRange", {})
+        if selection_range and "start" in selection_range:
+            line = selection_range["start"].get("line", 0) + 1  # Convert to 1-based
+            character = selection_range["start"].get("character", 0)
+        else:
+            # Fall back to range if selectionRange not available
+            range_data = symbol_data.get("range", {})
+            if range_data and "start" in range_data:
+                line = range_data["start"].get("line", 0) + 1  # Convert to 1-based
+                character = range_data["start"].get("character", 0)
+
         # Process children recursively
         children = []
         for child_data in symbol_data.get("children", []):
@@ -31,6 +47,8 @@ class SymbolAnalyzer:
             "name": name,
             "kind": kind,
             "kind_name": kind_name,
+            "line": line,
+            "character": character,
             "children": children,
             "child_count": len(children),
         }

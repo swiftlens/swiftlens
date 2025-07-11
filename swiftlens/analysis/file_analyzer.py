@@ -51,10 +51,15 @@ class FileAnalyzer:
             (r"func\s+" + re.escape(symbol_name) + r"\b", "function"),
             (r"var\s+" + re.escape(symbol_name) + r"\b", "variable"),
             (r"let\s+" + re.escape(symbol_name) + r"\b", "constant"),
+            (r"typealias\s+" + re.escape(symbol_name) + r"\b", "typealias"),
+            (r"extension\s+" + re.escape(symbol_name) + r"\b", "extension"),
         ]
 
-        # First pass: Look for actual declarations
+        # First pass: Look for actual declarations (with optional access modifiers)
         for pattern, _decl_type in declaration_patterns:
+            # Add support for access modifiers
+            full_pattern = r"(?:public\s+|private\s+|internal\s+|fileprivate\s+|open\s+)?" + pattern
+
             for i, line_text in enumerate(file_lines):
                 # Skip comment lines
                 stripped = line_text.strip()
@@ -65,14 +70,37 @@ class FileAnalyzer:
                 ):
                     continue
 
-                match = re.search(pattern, line_text)
+                # Skip string literals - check if we're inside quotes
+                # This is a simple heuristic that helps avoid matching symbol names in strings
+                quote_count_before = line_text.count(
+                    '"', 0, line_text.find(symbol_name) if symbol_name in line_text else 0
+                )
+                if quote_count_before % 2 == 1:  # Odd number means we're inside a string
+                    continue
+
+                match = re.search(full_pattern, line_text)
                 if match:
                     # Find the exact position of the symbol name within the match
                     symbol_pos = line_text.find(symbol_name, match.start())
                     if symbol_pos != -1:
                         return (i, symbol_pos)
 
-        # Second pass: Look for any word boundary match (excluding comments)
+        # Second pass: Look for type annotations (e.g., ": User")
+        type_pattern = r":\s*" + re.escape(symbol_name) + r"\b"
+        for i, line_text in enumerate(file_lines):
+            # Skip comment lines
+            stripped = line_text.strip()
+            if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*"):
+                continue
+
+            match = re.search(type_pattern, line_text)
+            if match:
+                # Find the exact position of the symbol name
+                symbol_pos = line_text.find(symbol_name, match.start())
+                if symbol_pos != -1:
+                    return (i, symbol_pos)
+
+        # Third pass: Look for any word boundary match (excluding comments and strings)
         pattern = r"\b" + re.escape(symbol_name) + r"\b"
         for i, line_text in enumerate(file_lines):
             # Skip comment lines
@@ -80,11 +108,18 @@ class FileAnalyzer:
             if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*"):
                 continue
 
+            # Skip string literals
+            quote_count_before = line_text.count(
+                '"', 0, line_text.find(symbol_name) if symbol_name in line_text else 0
+            )
+            if quote_count_before % 2 == 1:
+                continue
+
             match = re.search(pattern, line_text)
             if match:
                 return (i, match.start())
 
-        # Third pass: Fallback to first occurrence (including comments) for backward compatibility
+        # Fourth pass: Fallback to first occurrence (including comments) for backward compatibility
         for i, line_text in enumerate(file_lines):
             match = re.search(pattern, line_text)
             if match:
