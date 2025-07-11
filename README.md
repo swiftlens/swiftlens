@@ -35,52 +35,34 @@ AI Agent (Claude/GPT) → MCP Protocol → SwiftLens → SourceKit-LSP → Swift
 - **Python 3.10+**
 - **Xcode** (full installation from App Store, not just Command Line Tools)
 
-### Quick Start
+## Quick Start
 
-```bash
-# Install from TestPyPI (current release)
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ swiftlens
-```
+### Configure for Claude Code / Gemini CLI
 
-### First Time Running?
-
-SwiftLens automatically installs its required `swiftlens-core` dependency on first run. If you see:
-
-```
-📦 swiftlens-core not found. Installing from TestPyPI...
-✅ swiftlens-core installed successfully
-⚠️  Please restart the MCP server for changes to take effect
-```
-
-Simply restart the MCP server and everything will work seamlessly.
-
-### Configure for Claude Desktop
-
-Add to your Claude Desktop configuration:
+Add to your json configuration file mcpServers section:
 
 ```json
 {
   "mcpServers": {
     "swiftlens": {
-      "type": "stdio",
       "command": "uvx",
-      "args": [
-        "--index-url",
-        "https://test.pypi.org/simple/",
-        "--extra-index-url",
-        "https://pypi.org/simple",
-        "swiftlens"
-      ]
+      "args": ["swiftlens"]
     }
   }
 }
 ```
 
-Note: The `--index-url` and `--extra-index-url` arguments ensure SwiftLens is installed from TestPyPI with its dependencies.
+## SourceKit LSP Index
 
-## Usage
+SwiftLens will need proper sourcekit-lsp index in order to work properly you can either
 
-### Building Your Project Index
+### Ask AI to build your index
+
+```bash
+"hey claude, run swift_build_index tool"
+```
+
+### Building Your Project Index Manually
 
 SwiftLens requires an index store for cross-file analysis. Build it with:
 
@@ -92,7 +74,7 @@ cd /path/to/your/swift/project
 swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 ```
 
-**Important**: Rebuild the index when you:
+**Important**: Rebuilding of the index is required when you:
 
 - Add new Swift files
 - Change public interfaces
@@ -100,7 +82,7 @@ swift build -Xswiftc -index-store-path -Xswiftc .build/index/store
 
 ### Available Tools
 
-SwiftLens provides 18 tools for Swift code analysis:
+SwiftLens provides 15 tools for Swift code analysis:
 
 #### Single-File Analysis (No Index Required)
 
@@ -112,6 +94,7 @@ SwiftLens provides 18 tools for Swift code analysis:
 - `swift_get_file_imports` - Extract import statements
 - `swift_validate_file` - Validate syntax and types with swiftc
 - `swift_check_environment` - Verify Swift development setup
+- `swift_build_index` - Build index store db of current project for sourcekit-lsp
 
 #### Cross-File Analysis (Requires Index)
 
