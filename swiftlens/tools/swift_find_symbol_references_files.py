@@ -7,8 +7,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from lsp.managed_client import find_swift_project_root, managed_lsp_client
-from lsp.timeouts import LSPTimeouts
+try:
+    from lsp.managed_client import find_swift_project_root, managed_lsp_client
+    from lsp.timeouts import LSPTimeouts
+except ImportError as e:
+    raise ImportError(
+        "swiftlens-core package is required but not installed. "
+        "Please install it with: pip install swiftlens-core"
+    ) from e
+
 from pydantic import ValidationError
 
 from swiftlens.analysis.file_analyzer import FileAnalyzer
@@ -18,7 +25,8 @@ from swiftlens.model.models import (
     SymbolReference,
     SymbolReferenceResponse,
 )
-from swiftlens.utils.environment import get_max_workers, get_max_files
+from swiftlens.utils.environment import get_max_files, get_max_workers
+from swiftlens.utils.thread_local_lsp import get_thread_local_analyzer
 
 # Setup debug logger
 logger = logging.getLogger(__name__)
@@ -123,9 +131,15 @@ def swift_find_symbol_references_files(
             # Use provided client (performance optimization for tests)
             analyzer = FileAnalyzer(client)
 
-            # Process all files with a single thread pool
+            # Process all files - when client is provided, use sequential processing
+            # to ensure the provided client is used for all files
             file_results, total_references = _process_all_files(
-                file_paths, symbol_name, analyzer, accumulator_lock, allow_outside_cwd
+                file_paths,
+                symbol_name,
+                analyzer,
+                accumulator_lock,
+                allow_outside_cwd,
+                use_provided_analyzer=True,
             )
         else:
             # Find Swift project root for proper LSP initialization
@@ -165,7 +179,7 @@ def swift_find_symbol_references_files(
             error=f"LSP communication error: {str(e)}",
             error_type=ErrorType.LSP_ERROR,
         ).model_dump()
-    except (OSError, RuntimeError) as e:
+    except OSError as e:
         return MultiFileSymbolReferenceResponse(
             success=False,
             symbol_name=symbol_name,
@@ -173,7 +187,19 @@ def swift_find_symbol_references_files(
             total_files=len(file_paths),
             total_references=0,
             error=str(e),
-            error_type=ErrorType.LSP_ERROR,
+            error_type=ErrorType.FILE_NOT_FOUND
+            if "No such file" in str(e)
+            else ErrorType.VALIDATION_ERROR,
+        ).model_dump()
+    except RuntimeError as e:
+        return MultiFileSymbolReferenceResponse(
+            success=False,
+            symbol_name=symbol_name,
+            files={},
+            total_files=len(file_paths),
+            total_references=0,
+            error=str(e),
+            error_type=ErrorType.LSP_ERROR if "LSP" in str(e) else ErrorType.VALIDATION_ERROR,
         ).model_dump()
 
 
@@ -304,15 +330,17 @@ def _process_all_files(
     analyzer: FileAnalyzer,
     accumulator_lock: threading.Lock,
     allow_outside_cwd: bool = False,
+    use_provided_analyzer: bool = False,
 ) -> tuple[dict[str, SymbolReferenceResponse], int]:
     """Process all files using a single thread pool executor.
 
     Args:
         file_paths: List of file paths to process
         symbol_name: Symbol name to search for
-        analyzer: FileAnalyzer instance
+        analyzer: FileAnalyzer instance (used for sequential processing or when client is provided)
         accumulator_lock: Lock for thread-safe accumulator updates
         allow_outside_cwd: Allow processing files outside the current working directory
+        use_provided_analyzer: Force sequential processing with provided analyzer (for tests)
 
     Returns:
         Tuple of (file_results dict, total_references count)
@@ -331,15 +359,19 @@ def _process_all_files(
         else:
             file_results[file_path] = error_response
 
-    # Create a lock for thread-safe LSP client access
-    analyzer_lock = threading.RLock()
+    # Find project root for LSP initialization (used by all threads)
+    project_root = find_swift_project_root(valid_files[0]) if valid_files else None
+    if project_root is None and valid_files:
+        # Fallback for test environments or isolated files
+        project_root = os.path.dirname(os.path.abspath(valid_files[0]))
 
-    # Performance optimization: process small file counts sequentially
-    # to avoid thread pool overhead (~30ms startup cost)
-    if len(valid_files) <= 2:
+    # Process sequentially if:
+    # 1. We have a provided analyzer (test mode/specific client)
+    # 2. Small file count (performance optimization)
+    if use_provided_analyzer or len(valid_files) <= 2:
         for file_path in valid_files:
             try:
-                result = _process_single_file(analyzer, file_path, symbol_name, analyzer_lock)
+                result = _process_single_file(analyzer, file_path, symbol_name, None)
                 file_results[file_path] = result
                 if result.success:
                     with accumulator_lock:
@@ -354,7 +386,7 @@ def _process_all_files(
                     error=f"LSP communication error: {str(e)}",
                     error_type=ErrorType.LSP_ERROR,
                 )
-            except (OSError, RuntimeError, ValueError) as e:
+            except OSError as e:
                 file_results[file_path] = SymbolReferenceResponse(
                     success=False,
                     file_path=file_path,
@@ -362,20 +394,34 @@ def _process_all_files(
                     references=[],
                     reference_count=0,
                     error=str(e),
-                    error_type=ErrorType.LSP_ERROR,
+                    error_type=ErrorType.FILE_NOT_FOUND
+                    if "No such file" in str(e)
+                    else ErrorType.VALIDATION_ERROR,
+                )
+            except (RuntimeError, ValueError) as e:
+                file_results[file_path] = SymbolReferenceResponse(
+                    success=False,
+                    file_path=file_path,
+                    symbol_name=symbol_name,
+                    references=[],
+                    reference_count=0,
+                    error=str(e),
+                    error_type=ErrorType.LSP_ERROR
+                    if "LSP" in str(e)
+                    else ErrorType.VALIDATION_ERROR,
                 )
         return file_results, total_references
 
-    # Use a single executor for valid files only
+    # Use a thread pool for parallel processing
+    # Each thread will create its own LSP client to avoid thread safety issues
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # Submit tasks only for valid files
         future_to_file = {
             executor.submit(
-                _process_single_file,
-                analyzer,
+                _process_single_file_with_new_client,
                 file_path,
                 symbol_name,
-                analyzer_lock,
+                project_root,
             ): file_path
             for file_path in valid_files
         }
@@ -399,7 +445,7 @@ def _process_all_files(
                     error=f"LSP communication error: {str(e)}",
                     error_type=ErrorType.LSP_ERROR,
                 )
-            except (OSError, RuntimeError, ValueError) as e:
+            except OSError as e:
                 file_results[file_path] = SymbolReferenceResponse(
                     success=False,
                     file_path=file_path,
@@ -407,10 +453,58 @@ def _process_all_files(
                     references=[],
                     reference_count=0,
                     error=str(e),
-                    error_type=ErrorType.LSP_ERROR,
+                    error_type=ErrorType.FILE_NOT_FOUND
+                    if "No such file" in str(e)
+                    else ErrorType.VALIDATION_ERROR,
+                )
+            except (RuntimeError, ValueError) as e:
+                file_results[file_path] = SymbolReferenceResponse(
+                    success=False,
+                    file_path=file_path,
+                    symbol_name=symbol_name,
+                    references=[],
+                    reference_count=0,
+                    error=str(e),
+                    error_type=ErrorType.LSP_ERROR
+                    if "LSP" in str(e)
+                    else ErrorType.VALIDATION_ERROR,
                 )
 
     return file_results, total_references
+
+
+def _process_single_file_with_new_client(
+    file_path: str,
+    symbol_name: str,
+    project_root: str,
+) -> SymbolReferenceResponse:
+    """Process a single file using thread-local LSP client for optimal performance.
+
+    Uses thread-local storage to reuse LSP clients across files in the same thread,
+    avoiding the 2-second initialization overhead while maintaining thread safety.
+
+    Args:
+        file_path: Path to the Swift file to analyze
+        symbol_name: Name of the symbol to find references for
+        project_root: Project root for LSP initialization
+
+    Returns:
+        SymbolReferenceResponse for this specific file
+    """
+    try:
+        # Get thread-local analyzer (reuses LSP client within same thread)
+        analyzer = get_thread_local_analyzer(project_root)
+        return _process_single_file(analyzer, file_path, symbol_name, None)
+    except Exception as e:
+        return SymbolReferenceResponse(
+            success=False,
+            file_path=file_path,
+            symbol_name=symbol_name,
+            references=[],
+            reference_count=0,
+            error=f"LSP error: {str(e)}",
+            error_type=ErrorType.LSP_ERROR,
+        )
 
 
 def _process_single_file(
@@ -493,7 +587,7 @@ def _process_single_file(
             error=f"LSP communication error: {str(e)}",
             error_type=ErrorType.LSP_ERROR,
         )
-    except (OSError, RuntimeError, ValueError) as e:
+    except OSError as e:
         return SymbolReferenceResponse(
             success=False,
             file_path=file_path,
@@ -501,5 +595,17 @@ def _process_single_file(
             references=[],
             reference_count=0,
             error=str(e),
-            error_type=ErrorType.LSP_ERROR,
+            error_type=ErrorType.FILE_NOT_FOUND
+            if "No such file" in str(e)
+            else ErrorType.VALIDATION_ERROR,
+        )
+    except (RuntimeError, ValueError) as e:
+        return SymbolReferenceResponse(
+            success=False,
+            file_path=file_path,
+            symbol_name=symbol_name,
+            references=[],
+            reference_count=0,
+            error=str(e),
+            error_type=ErrorType.LSP_ERROR if "LSP" in str(e) else ErrorType.VALIDATION_ERROR,
         )

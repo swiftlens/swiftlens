@@ -6,8 +6,15 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from lsp.managed_client import find_swift_project_root, managed_lsp_client
-from lsp.timeouts import LSPTimeouts
+try:
+    from lsp.managed_client import find_swift_project_root, managed_lsp_client
+    from lsp.timeouts import LSPTimeouts
+except ImportError as e:
+    raise ImportError(
+        "swiftlens-core package is required but not installed. "
+        "Please install it with: pip install swiftlens-core"
+    ) from e
+
 from pydantic import ValidationError
 
 from swiftlens.analysis.file_analyzer import FileAnalyzer
@@ -18,7 +25,8 @@ from swiftlens.model.models import (
     SwiftSymbolInfo,
     SymbolKind,
 )
-from swiftlens.utils.environment import get_max_workers, get_max_files
+from swiftlens.utils.environment import get_max_files, get_max_workers
+from swiftlens.utils.thread_local_lsp import get_thread_local_analyzer
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -50,7 +58,7 @@ def swift_analyze_multiple_files(
             error="No files provided",
             error_type=ErrorType.VALIDATION_ERROR,
         ).model_dump()
-    
+
     if len(file_paths) > MAX_FILES:
         return MultiFileAnalysisResponse(
             success=False,
@@ -70,6 +78,9 @@ def swift_analyze_multiple_files(
         # Find Swift project root for proper LSP initialization
         # Use the first file path to determine project root
         project_root = find_swift_project_root(file_paths[0]) if file_paths else None
+        if project_root is None and file_paths:
+            # Fallback for test environments or isolated files
+            project_root = os.path.dirname(os.path.abspath(file_paths[0]))
 
         # Initialize LSP client with project root and longer timeout for indexing
         with managed_lsp_client(
@@ -79,7 +90,7 @@ def swift_analyze_multiple_files(
 
             # Process all files with a single thread pool
             file_results, total_symbols = _process_all_files(
-                file_paths, analyzer, accumulator_lock, allow_outside_cwd
+                file_paths, analyzer, accumulator_lock, allow_outside_cwd, project_root
             )
 
         return MultiFileAnalysisResponse(
@@ -99,15 +110,27 @@ def swift_analyze_multiple_files(
             error=f"LSP communication error: {str(e)}",
             error_type=ErrorType.LSP_ERROR,
         ).model_dump()
-    except (OSError, RuntimeError, ValueError) as e:
-        # Handle file system and runtime errors
+    except OSError as e:
+        # Handle file system errors
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            total_files=len(file_paths),
+            total_symbols=0,
+            error=f"File system error: {str(e)}",
+            error_type=ErrorType.FILE_NOT_FOUND
+            if "No such file" in str(e)
+            else ErrorType.VALIDATION_ERROR,
+        ).model_dump()
+    except (RuntimeError, ValueError) as e:
+        # Handle runtime and validation errors
         return MultiFileAnalysisResponse(
             success=False,
             files={},
             total_files=len(file_paths),
             total_symbols=0,
             error=f"Processing error: {str(e)}",
-            error_type=ErrorType.LSP_ERROR,
+            error_type=ErrorType.LSP_ERROR if "LSP" in str(e) else ErrorType.VALIDATION_ERROR,
         ).model_dump()
     except KeyboardInterrupt:
         # Don't catch user interrupts
@@ -193,18 +216,18 @@ def _validate_file_path(
         common_path = os.path.commonpath([cwd, real_path])
         if common_path != cwd:
             if not allow_outside_cwd:
-                    return (
-                        False,
-                        file_path,
-                        FileAnalysisResponse(
-                            success=False,
-                            file_path=file_path,
-                            symbols=[],
-                            symbol_count=0,
-                            error=f"File is outside current working directory: {file_path}",
-                            error_type=ErrorType.VALIDATION_ERROR,
-                        ),
-                    )
+                return (
+                    False,
+                    file_path,
+                    FileAnalysisResponse(
+                        success=False,
+                        file_path=file_path,
+                        symbols=[],
+                        symbol_count=0,
+                        error=f"File is outside current working directory: {file_path}",
+                        error_type=ErrorType.VALIDATION_ERROR,
+                    ),
+                )
     except ValueError:
         # os.path.commonpath raises ValueError if paths are on different drives (Windows)
         if not allow_outside_cwd:
@@ -244,14 +267,16 @@ def _process_all_files(
     analyzer: FileAnalyzer,
     accumulator_lock: threading.Lock,
     allow_outside_cwd: bool = False,
+    project_root: str = None,
 ) -> tuple[dict[str, FileAnalysisResponse], int]:
     """Process all files using a single thread pool executor.
 
     Args:
         file_paths: List of file paths to process
-        analyzer: FileAnalyzer instance
+        analyzer: FileAnalyzer instance (only used for sequential processing)
         accumulator_lock: Lock for thread-safe accumulator updates
         allow_outside_cwd: Allow processing files outside the current working directory
+        project_root: Project root for LSP initialization
 
     Returns:
         Tuple of (file_results dict, total_symbols count)
@@ -268,25 +293,25 @@ def _process_all_files(
         else:
             file_results[file_path] = error_response
 
-    # Create a lock for thread-safe LSP client access
-    analyzer_lock = threading.RLock()
-
     # Performance optimization: process small file counts sequentially
     # to avoid thread pool overhead (~30ms startup cost)
     if len(valid_files) <= 2:
         for file_path in valid_files:
-            result = _process_single_file(analyzer, file_path, analyzer_lock)
+            result = _process_single_file(analyzer, file_path, None)
             file_results[file_path] = result
             if result.success:
                 with accumulator_lock:
                     total_symbols += result.symbol_count
         return file_results, total_symbols
 
-    # Use a single executor for valid files only
+    # Use a thread pool for parallel processing
+    # Each thread will create its own LSP client to avoid thread safety issues
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # Submit tasks only for valid files
         future_to_file = {
-            executor.submit(_process_single_file, analyzer, file_path, analyzer_lock): file_path
+            executor.submit(
+                _process_single_file_with_new_client, file_path, project_root
+            ): file_path
             for file_path in valid_files
         }
 
@@ -310,6 +335,37 @@ def _process_all_files(
                 )
 
     return file_results, total_symbols
+
+
+def _process_single_file_with_new_client(
+    file_path: str,
+    project_root: str,
+) -> FileAnalysisResponse:
+    """Process a single file using thread-local LSP client for optimal performance.
+
+    Uses thread-local storage to reuse LSP clients across files in the same thread,
+    avoiding the 2-second initialization overhead while maintaining thread safety.
+
+    Args:
+        file_path: Path to the Swift file to analyze
+        project_root: Project root for LSP initialization
+
+    Returns:
+        FileAnalysisResponse for this specific file
+    """
+    try:
+        # Get thread-local analyzer (reuses LSP client within same thread)
+        analyzer = get_thread_local_analyzer(project_root)
+        return _process_single_file(analyzer, file_path, None)
+    except Exception as e:
+        return FileAnalysisResponse(
+            success=False,
+            file_path=file_path,
+            symbols=[],
+            symbol_count=0,
+            error=f"LSP error: {str(e)}",
+            error_type=ErrorType.LSP_ERROR,
+        )
 
 
 def _process_single_file(
