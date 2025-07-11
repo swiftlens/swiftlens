@@ -18,13 +18,14 @@ from swiftlens.model.models import (
     SwiftSymbolInfo,
     SymbolKind,
 )
-from swiftlens.utils.environment import get_max_workers
+from swiftlens.utils.environment import get_max_workers, get_max_files
 
 # Setup logger
 logger = logging.getLogger(__name__)
 
 # Thread pool configuration
 MAX_WORKERS = get_max_workers(default=4)
+MAX_FILES = get_max_files(default=500)
 
 
 def swift_analyze_multiple_files(
@@ -47,6 +48,16 @@ def swift_analyze_multiple_files(
             total_files=0,
             total_symbols=0,
             error="No files provided",
+            error_type=ErrorType.VALIDATION_ERROR,
+        ).model_dump()
+    
+    if len(file_paths) > MAX_FILES:
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            total_files=len(file_paths),
+            total_symbols=0,
+            error=f"Too many files provided: {len(file_paths)}. Maximum allowed: {MAX_FILES}",
             error_type=ErrorType.VALIDATION_ERROR,
         ).model_dump()
 
@@ -78,13 +89,38 @@ def swift_analyze_multiple_files(
             total_symbols=total_symbols,
         ).model_dump()
 
-    except Exception as e:
+    except (TimeoutError, ConnectionError) as e:
+        # Handle LSP communication errors
         return MultiFileAnalysisResponse(
             success=False,
             files={},
             total_files=len(file_paths),
             total_symbols=0,
-            error=str(e),
+            error=f"LSP communication error: {str(e)}",
+            error_type=ErrorType.LSP_ERROR,
+        ).model_dump()
+    except (OSError, RuntimeError, ValueError) as e:
+        # Handle file system and runtime errors
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            total_files=len(file_paths),
+            total_symbols=0,
+            error=f"Processing error: {str(e)}",
+            error_type=ErrorType.LSP_ERROR,
+        ).model_dump()
+    except KeyboardInterrupt:
+        # Don't catch user interrupts
+        raise
+    except Exception as e:
+        # Log unexpected errors for debugging
+        logger.exception("Unexpected error in file analysis")
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            total_files=len(file_paths),
+            total_symbols=0,
+            error=f"Unexpected error: {str(e)}",
             error_type=ErrorType.LSP_ERROR,
         ).model_dump()
 
@@ -124,7 +160,7 @@ def _validate_file_path(
     real_path = os.path.realpath(file_path)
     if real_path != file_path:
         # For non-Swift files in symlinks, check extension first
-        if not file_path.endswith(".swift"):
+        if not file_path.lower().endswith(".swift"):
             return (
                 False,
                 file_path,
@@ -145,14 +181,32 @@ def _validate_file_path(
                 file_path=file_path,
                 symbols=[],
                 symbol_count=0,
-                error=f"Path contains symbolic links: {file_path}",
+                error=f"Symbolic links are not allowed for security reasons. File: {file_path} resolves to: {real_path}",
                 error_type=ErrorType.VALIDATION_ERROR,
             ),
         )
 
     # Ensure the resolved path is within or below the current working directory
     cwd = os.path.abspath(os.getcwd())
-    if not real_path.startswith(cwd + os.sep) and real_path != cwd:
+    # Use os.path.commonpath for secure path containment check
+    try:
+        common_path = os.path.commonpath([cwd, real_path])
+        if common_path != cwd:
+            if not allow_outside_cwd:
+                    return (
+                        False,
+                        file_path,
+                        FileAnalysisResponse(
+                            success=False,
+                            file_path=file_path,
+                            symbols=[],
+                            symbol_count=0,
+                            error=f"File is outside current working directory: {file_path}",
+                            error_type=ErrorType.VALIDATION_ERROR,
+                        ),
+                    )
+    except ValueError:
+        # os.path.commonpath raises ValueError if paths are on different drives (Windows)
         if not allow_outside_cwd:
             return (
                 False,
@@ -167,8 +221,8 @@ def _validate_file_path(
                 ),
             )
 
-    # Check file extension (case-sensitive, only lowercase .swift)
-    if not file_path.endswith(".swift"):
+    # Check file extension (case-insensitive to support .SWIFT on macOS)
+    if not file_path.lower().endswith(".swift"):
         return (
             False,
             file_path,
@@ -216,6 +270,17 @@ def _process_all_files(
 
     # Create a lock for thread-safe LSP client access
     analyzer_lock = threading.RLock()
+
+    # Performance optimization: process small file counts sequentially
+    # to avoid thread pool overhead (~30ms startup cost)
+    if len(valid_files) <= 2:
+        for file_path in valid_files:
+            result = _process_single_file(analyzer, file_path, analyzer_lock)
+            file_results[file_path] = result
+            if result.success:
+                with accumulator_lock:
+                    total_symbols += result.symbol_count
+        return file_results, total_symbols
 
     # Use a single executor for valid files only
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -296,7 +361,7 @@ def _process_single_file(
             file_path=file_path,
             symbols=[],
             symbol_count=0,
-            error=result_dict["error_message"],
+            error=result_dict.get("error_message", result_dict.get("error", "Unknown error")),
             error_type=ErrorType.LSP_ERROR,
         )
 

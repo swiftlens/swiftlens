@@ -18,18 +18,21 @@ from swiftlens.model.models import (
     SymbolReference,
     SymbolReferenceResponse,
 )
-from swiftlens.utils.environment import get_max_workers
+from swiftlens.utils.environment import get_max_workers, get_max_files
 
 # Setup debug logger
 logger = logging.getLogger(__name__)
 debug_enabled = os.environ.get("MCP_DEBUG", "").lower() in ["true", "1", "yes"]
 
-# Configure module-specific logging level based on debug flag
-if debug_enabled:
+# Configure module-specific logging with dedicated handler when debug is enabled
+if debug_enabled and not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
 
 # Constants
-MAX_FILES = 500  # Maximum number of files to process
+MAX_FILES = get_max_files(default=500)
 # Thread pool configuration
 MAX_WORKERS = get_max_workers(default=4)
 
@@ -211,7 +214,7 @@ def _validate_file_path(
     real_path = os.path.realpath(file_path)
     if real_path != file_path:
         # For non-Swift files in symlinks, check extension first
-        if not file_path.endswith(".swift"):
+        if not file_path.lower().endswith(".swift"):
             return (
                 False,
                 file_path,
@@ -234,14 +237,33 @@ def _validate_file_path(
                 symbol_name=symbol_name,
                 references=[],
                 reference_count=0,
-                error=f"Path contains symbolic links: {file_path}",
+                error=f"Symbolic links are not allowed for security reasons. File: {file_path} resolves to: {real_path}",
                 error_type=ErrorType.VALIDATION_ERROR,
             ),
         )
 
     # Ensure the resolved path is within or below the current working directory
     cwd = os.path.abspath(os.getcwd())
-    if not real_path.startswith(cwd + os.sep) and real_path != cwd:
+    # Use os.path.commonpath for secure path containment check
+    try:
+        common_path = os.path.commonpath([cwd, real_path])
+        if common_path != cwd:
+            if not allow_outside_cwd:
+                return (
+                    False,
+                    file_path,
+                    SymbolReferenceResponse(
+                        success=False,
+                        file_path=file_path,
+                        symbol_name=symbol_name,
+                        references=[],
+                        reference_count=0,
+                        error=f"File is outside current working directory: {file_path}",
+                        error_type=ErrorType.VALIDATION_ERROR,
+                    ),
+                )
+    except ValueError:
+        # os.path.commonpath raises ValueError if paths are on different drives (Windows)
         if not allow_outside_cwd:
             return (
                 False,
@@ -257,8 +279,8 @@ def _validate_file_path(
                 ),
             )
 
-    # Check file extension (case-sensitive, only lowercase .swift)
-    if not file_path.endswith(".swift"):
+    # Check file extension (case-insensitive to support .SWIFT on macOS)
+    if not file_path.lower().endswith(".swift"):
         return (
             False,
             file_path,
@@ -311,6 +333,38 @@ def _process_all_files(
 
     # Create a lock for thread-safe LSP client access
     analyzer_lock = threading.RLock()
+
+    # Performance optimization: process small file counts sequentially
+    # to avoid thread pool overhead (~30ms startup cost)
+    if len(valid_files) <= 2:
+        for file_path in valid_files:
+            try:
+                result = _process_single_file(analyzer, file_path, symbol_name, analyzer_lock)
+                file_results[file_path] = result
+                if result.success:
+                    with accumulator_lock:
+                        total_references += result.reference_count
+            except (TimeoutError, ConnectionError) as e:
+                file_results[file_path] = SymbolReferenceResponse(
+                    success=False,
+                    file_path=file_path,
+                    symbol_name=symbol_name,
+                    references=[],
+                    reference_count=0,
+                    error=f"LSP communication error: {str(e)}",
+                    error_type=ErrorType.LSP_ERROR,
+                )
+            except (OSError, RuntimeError, ValueError) as e:
+                file_results[file_path] = SymbolReferenceResponse(
+                    success=False,
+                    file_path=file_path,
+                    symbol_name=symbol_name,
+                    references=[],
+                    reference_count=0,
+                    error=str(e),
+                    error_type=ErrorType.LSP_ERROR,
+                )
+        return file_results, total_references
 
     # Use a single executor for valid files only
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
