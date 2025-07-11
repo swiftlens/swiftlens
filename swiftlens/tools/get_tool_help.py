@@ -228,7 +228,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
                 "format": "replacement confirmation or error description",
             },
             "examples": [
-                "swift_replace_symbol_body('src/App.swift', 'calculateTotal', 'return items.reduce(0, +)') -> 'Replaced body of calculateTotal'",
+                "swift_replace_symbol_body('src/App.swift', 'calculateTotal()', 'return items.reduce(0, +)') -> 'Replaced body of calculateTotal()'",
                 "swift_replace_symbol_body('src/User.swift', 'add(_:)', 'users.append(user)\\nnotifyObservers()') -> 'Replaced body of add(_:)'",
                 "swift_replace_symbol_body('src/Service.swift', 'fetch(id:completion:)', 'guard let url = buildURL(id) else { return }\\n// implementation') -> 'Replaced body of fetch(id:completion:)'",
                 "IMPORTANT: For methods with parameters, ALWAYS use full signature: validate() for no params, validate(_:) for one unlabeled param, validate(email:) for labeled param",

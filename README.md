@@ -1,4 +1,4 @@
-# SwiftLens: MCP Server for Swift Code Sementic Analysis
+# SwiftLens: MCP Server for Swift Code Semantic Analysis
 
 **SwiftLens** is a Model Context Protocol (MCP) server that provides deep, semantic-level analysis of Swift codebases to AI agents. By integrating directly with Apple's SourceKit-LSP, SwiftLens enables AI models to understand Swift code with compiler-grade accuracy.
 
