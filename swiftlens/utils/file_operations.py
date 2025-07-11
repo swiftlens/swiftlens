@@ -466,6 +466,8 @@ class SwiftFileModifier:
                 )
 
             # Handle single-line body replacement (e.g., single-line computed properties)
+            # This is only for cases where the entire symbol (declaration + body) is on one line
+            single_line_handled = False
             if (
                 body_start_line == body_end_line
                 and body_start_char is not None
@@ -473,36 +475,38 @@ class SwiftFileModifier:
             ):
                 # Replace content between braces on the same line
                 line_idx = body_start_line - 1  # Convert to 0-based
-                if line_idx >= len(lines):
-                    return OperationResult(
-                        False,
-                        f"Line {body_start_line} out of range (file has {len(lines)} lines)",
-                    )
+                if line_idx < len(lines):
+                    original_line = lines[line_idx]
+                    
+                    # Validate that the character positions are within the line bounds
+                    # and that we actually have braces at those positions
+                    if (body_start_char < len(original_line) and 
+                        body_end_char < len(original_line) and
+                        body_start_char < body_end_char):
+                        # Extract the content before and after the body
+                        before_body = original_line[: body_start_char + 1]  # Include the opening brace
+                        after_body = original_line[body_end_char:]  # From closing brace onwards
 
-                original_line = lines[line_idx]
+                        # Construct new line with replaced body
+                        new_line = before_body + " " + new_body_content + " " + after_body
 
-                # Extract the content before and after the body
-                before_body = original_line[: body_start_char + 1]  # Include the opening brace
-                after_body = original_line[body_end_char:]  # From closing brace onwards
+                        # Replace the line
+                        lines[line_idx] = new_line
+                        new_content = "\n".join(lines)
 
-                # Construct new line with replaced body
-                new_line = before_body + " " + new_body_content + " " + after_body
+                        self._check_operation_timeout()
 
-                # Replace the line
-                lines[line_idx] = new_line
-                new_content = "\n".join(lines)
+                        # Write atomically
+                        self._write_content_atomically(new_content)
+                        self._modified = True
 
-                self._check_operation_timeout()
-
-                # Write atomically
-                self._write_content_atomically(new_content)
-                self._modified = True
-
-                return OperationResult(
-                    True,
-                    f"Replaced single-line body on line {body_start_line}",
-                    backup_path,
-                )
+                        return OperationResult(
+                            True,
+                            f"Replaced single-line body on line {body_start_line}",
+                            backup_path,
+                        )
+            
+            # If single-line replacement wasn't handled, fall through to multi-line logic
 
             # Multi-line body replacement (original logic)
             # Prepare new body content with proper indentation

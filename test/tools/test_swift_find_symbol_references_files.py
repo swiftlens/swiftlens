@@ -4,34 +4,16 @@ Test file for find_symbol_references_files tool using pytest.
 
 This test validates the swift_find_symbol_references_files tool functionality with LSP.
 
-IMPORTANT: Known Limitations in Test Environments
-=================================================
+IMPORTANT: References Now Work in Test Environments
+==================================================
 
-The textDocument/references operation has fundamental limitations in test environments
-that cause most tests to be skipped. This is NOT a bug in the tool but a limitation
-of SourceKit-LSP in isolated test environments.
+Previously, the textDocument/references operation had limitations in test environments
+due to missing -index-db-path argument. This has been FIXED by providing both:
+- -index-store-path: Points to the compiled index data
+- -index-db-path: Points to LSP's own database for quick lookups
 
-Why References Don't Work in Tests:
-1. **Incomplete IndexStoreDB**: Test environments only index symbol definitions,
-   not symbol occurrences/usages required for reference finding
-2. **Missing Build Flags**: Even with -index-store-path and -index-unit-output-path,
-   the isolated nature of test fixtures prevents full cross-file reference tracking
-3. **Path Resolution Issues**: Temporary test directories (/var/folders/...) lack
-   the stable paths that SourceKit-LSP expects for reference resolution
-4. **Module Boundaries**: Test fixtures don't establish proper module boundaries
-   needed for comprehensive reference tracking
-
-What Works in Production:
-- Real Swift projects with Xcode or VS Code handle references correctly
-- Production environments maintain complete IndexStoreDB with occurrence data
-- Stable project paths and proper module structure enable full functionality
-
-Test Strategy:
-- Tests skip rather than fail when no references are found
-- Validates tool structure, error handling, and edge cases
-- Tests multi-file parameter handling and validation
-- Ensures graceful handling of empty results (normal in test environments)
-- Validates per-file error reporting and aggregation
+With both arguments, SourceKit-LSP can properly track references across files
+even in test environments.
 """
 
 import os

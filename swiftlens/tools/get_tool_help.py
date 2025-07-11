@@ -213,21 +213,25 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
         "swift_replace_symbol_body": {
             "purpose": "Replace the body content of a specified Swift symbol while preserving declaration",
             "use_cases": [
-                "Update function implementations",
+                "Update function/method implementations",
                 "Replace class/struct body content",
                 "Modify method logic while keeping signature",
+                "Refactor implementation without changing interface",
             ],
             "parameters": {
                 "file_path": "File path (prefer relative paths like 'src/App.swift')",
-                "symbol_name": "Symbol name",
-                "new_body": "New body content",
+                "symbol_name": "Symbol name WITH FULL SIGNATURE - CRITICAL: For methods, include parameter labels (e.g., 'add(_:)' not 'add')",
+                "new_body": "New body content (without braces - just the code inside)",
             },
             "output_format": {
-                "result": "Success message",
+                "result": "Success message with replaced symbol",
                 "format": "replacement confirmation or error description",
             },
             "examples": [
-                "swift_replace_symbol_body('src/App.swift', 'calculateTotal', 'return a + b + tax') -> 'Replaced body of calculateTotal'"
+                "swift_replace_symbol_body('src/App.swift', 'calculateTotal', 'return items.reduce(0, +)') -> 'Replaced body of calculateTotal'",
+                "swift_replace_symbol_body('src/User.swift', 'add(_:)', 'users.append(user)\\nnotifyObservers()') -> 'Replaced body of add(_:)'",
+                "swift_replace_symbol_body('src/Service.swift', 'fetch(id:completion:)', 'guard let url = buildURL(id) else { return }\\n// implementation') -> 'Replaced body of fetch(id:completion:)'",
+                "IMPORTANT: For methods with parameters, ALWAYS use full signature: validate() for no params, validate(_:) for one unlabeled param, validate(email:) for labeled param",
             ],
         },
         "swift_search_pattern": {

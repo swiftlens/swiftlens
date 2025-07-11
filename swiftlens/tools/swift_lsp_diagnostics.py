@@ -308,6 +308,7 @@ def _check_project_setup(project_path: str) -> dict[str, Any]:
     # Check for index store with detailed diagnostics
     index_paths = [
         path / ".build" / "index" / "store",
+        path / ".build" / "index",  # Modern Swift uses this path
     ]
 
     for index_path in index_paths:
@@ -316,13 +317,30 @@ def _check_project_setup(project_path: str) -> dict[str, Any]:
             try:
                 # Get detailed index information
                 if index_path.is_dir():
-                    files = list(index_path.iterdir())
-                    setup["index_store_details"][str(index_path)] = {
-                        "exists": True,
-                        "entry_count": len(files),
-                        "has_units": any(f.name.startswith("v") for f in files),
-                        "has_records": any(f.name.startswith("data") for f in files),
-                    }
+                    details = {"exists": True}
+                    
+                    # Check for v5 index format (modern Swift)
+                    v5_path = index_path / "v5"
+                    if v5_path.exists():
+                        units_path = v5_path / "units"
+                        records_path = v5_path / "records"
+                        
+                        details["format"] = "v5"
+                        details["has_units"] = units_path.exists()
+                        details["has_records"] = records_path.exists()
+                        
+                        if units_path.exists():
+                            details["units_count"] = len(list(units_path.glob("*")))
+                        if records_path.exists():
+                            details["records_count"] = len(list(records_path.glob("*/*")))
+                    else:
+                        # Legacy format check
+                        files = list(index_path.iterdir())
+                        details["entry_count"] = len(files)
+                        details["has_units"] = any(f.name.startswith("v") for f in files)
+                        details["has_records"] = any(f.name.startswith("data") for f in files)
+                    
+                    setup["index_store_details"][str(index_path)] = details
             except Exception as e:
                 setup["index_store_details"][str(index_path)] = {"exists": True, "error": str(e)}
 
@@ -424,17 +442,29 @@ def _generate_recommendations(diagnostics: dict[str, Any]) -> list[str]:
         setup = diagnostics["project_setup"]
         if not setup["has_index_store"]:
             recommendations.append(
-                "No index store found. Build with: swift build -Xswiftc -index-store-path -Xswiftc .build/index/store"
+                "No index store found. Build with: swift build -Xswiftc -index-store-path -Xswiftc .build/index"
             )
         elif setup.get("index_store_details"):
             # Check for empty or incomplete index
             for path, details in setup["index_store_details"].items():
-                if details.get("entry_count", 0) == 0:
-                    recommendations.append(f"Index store at {path} is empty. Rebuild project")
-                elif not details.get("has_records"):
-                    recommendations.append(
-                        f"Index store at {path} missing reference records. Rebuild with proper flags"
-                    )
+                if details.get("format") == "v5":
+                    # Check v5 format
+                    if not details.get("has_units") or not details.get("has_records"):
+                        recommendations.append(f"Index store at {path} is incomplete. Rebuild project")
+                    elif details.get("units_count", 0) == 0:
+                        recommendations.append(f"Index store at {path} has no units. Rebuild project")
+                    elif details.get("records_count", 0) == 0:
+                        recommendations.append(
+                            f"Index store at {path} missing reference records. Rebuild with: swift build --enable-index-store -Xswiftc -index-store-path -Xswiftc .build/index -Xswiftc -index-include-locals"
+                        )
+                else:
+                    # Legacy format
+                    if details.get("entry_count", 0) == 0:
+                        recommendations.append(f"Index store at {path} is empty. Rebuild project")
+                    elif not details.get("has_records"):
+                        recommendations.append(
+                            f"Index store at {path} missing reference records. Rebuild with proper flags"
+                        )
 
         # Compilation database recommendations
         if setup.get("has_compile_commands"):

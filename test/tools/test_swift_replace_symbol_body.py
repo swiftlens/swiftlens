@@ -46,8 +46,7 @@ struct TestStruct {
 }"""
     file_path = create_swift_file(content, "TestStructFile.swift")
 
-    # Test replacing struct body (method-level replacement has LSP limitations in test environment)
-    # TODO: Method-level replacement should work in real usage but fails in test due to LSP symbol resolution
+    # Test replacing struct body
     new_body = """struct TestStruct {
         let value: String
         let newField: Int = 42
@@ -105,7 +104,6 @@ struct NormalizationTest {
     assert "normalized: Bool = true" in new_content, "Normalization test field not found"
 
 
-@pytest.mark.skip("Function-level replacement has LSP limitations in test environment")
 def test_single_line_function_body_replacement(built_swift_environment):
     """Test single-line function body replacement (reproducing the reported bug)."""
     project_root, sources_dir, create_swift_file = built_swift_environment
@@ -193,9 +191,8 @@ struct TestStructWithMethods {
     assert 'print("Original method")' not in new_content, "Original method was not replaced"
 
 
-@pytest.mark.skip("test only passes when run by itself")
-def test_method_body_replacement_with_lsp_limitations(built_swift_environment):
-    """Test method-level body replacement (may fail due to LSP symbol resolution limitations)."""
+def test_method_body_replacement_with_dotted_path(built_swift_environment):
+    """Test method-level body replacement using dotted path notation."""
     project_root, sources_dir, create_swift_file = built_swift_environment
 
     content = """import Foundation
@@ -385,7 +382,6 @@ def test_symbol_not_found(built_swift_environment):
     )
 
 
-@pytest.mark.skip("test only passes when run by itself")
 def test_performance(built_swift_environment):
     """Test 7: Performance with larger files."""
     project_root, sources_dir, create_swift_file = built_swift_environment
@@ -565,16 +561,8 @@ struct MyStructSingleLine {
 
 
 @pytest.mark.lsp
-@pytest.mark.skip(
-    "Dotted path symbol resolution causes segfault in test environment - works in production"
-)
 def test_computed_property_dotted_path_replacement(built_swift_environment):
     """Test 11: Computed property body replacement - dotted path access.
-
-    NOTE: This test is skipped due to a known SourceKit-LSP limitation in test environments.
-    Dotted path symbol resolution (e.g., MyStruct.myProperty) can cause segmentation faults
-    in isolated test environments due to incomplete indexing. This functionality works correctly
-    in production environments with proper Swift project setup (Xcode, VS Code with Swift extension).
 
     The segfault occurs because:
     1. Test environments have incomplete IndexStoreDB that may not properly index nested symbols
@@ -649,96 +637,6 @@ enum MyEnumWithBody {
 # when trying to resolve dotted path symbols (e.g., MyStruct.myProperty). This is related
 # to the same IndexStoreDB limitations that affect reference finding, but manifests as
 # a segmentation fault rather than empty results.
-
-
-@pytest.mark.lsp
-@pytest.mark.skip("Symbol ambiguity in test environment - LSP finds duplicate symbols")
-def test_computed_property_non_dotted_path_replacement(built_swift_environment):
-    """Test 11b: Computed property body replacement - alternative without dotted paths.
-
-    This test is skipped due to LSP symbol ambiguity issues in test environments.
-    The LSP server sometimes reports duplicate symbols for enums in isolated test files,
-    which doesn't occur in production environments.
-    """
-    project_root, sources_dir, create_swift_file = built_swift_environment
-
-    # Test 1: Struct with computed property
-    struct_content = """import Foundation
-
-struct MyStructWithBody {
-    private var _value: String = "stored"
-
-    var computedStructProperty: String {
-        return "struct computed: " + _value
-    }
-}"""
-    struct_file_path = create_swift_file(struct_content, "ComputedStructTest.swift")
-
-    # Replace the entire struct (which works reliably)
-    new_struct_body = """struct MyStructWithBody {
-    private var _value: String = "stored"
-
-    var computedStructProperty: String {
-        return "updated struct computed: " + _value + " via replacement"
-    }
-}"""
-
-    result_struct = swift_replace_symbol_body(
-        struct_file_path,
-        "MyStructWithBody",
-        new_struct_body,
-    )
-    handle_tool_result(result_struct)
-
-    # Verify struct replacement
-    with open(struct_file_path, encoding="utf-8") as f:
-        struct_final_content = f.read()
-    assert "updated struct computed: " in struct_final_content
-    assert "via replacement" in struct_final_content
-
-    # Test 2: Enum with computed property (separate file to avoid ambiguity)
-    enum_content = """import Foundation
-
-enum MyEnumWithBody {
-    case active, inactive
-
-    var computedEnumProperty: String {
-        switch self {
-        case .active:
-            return "enum active"
-        case .inactive:
-            return "enum inactive"
-        }
-    }
-}"""
-    enum_file_path = create_swift_file(enum_content, "ComputedEnumTest.swift")
-
-    # Replace the entire enum
-    new_enum_body = """enum MyEnumWithBody {
-    case active, inactive
-
-    var computedEnumProperty: String {
-        switch self {
-        case .active:
-            return "updated enum active via replacement"
-        case .inactive:
-            return "updated enum inactive via replacement"
-        }
-    }
-}"""
-
-    result_enum = swift_replace_symbol_body(
-        enum_file_path,
-        "MyEnumWithBody",
-        new_enum_body,
-    )
-    handle_tool_result(result_enum)
-
-    # Verify enum replacement
-    with open(enum_file_path, encoding="utf-8") as f:
-        enum_final_content = f.read()
-    assert "updated enum active via replacement" in enum_final_content
-    assert "updated enum inactive via replacement" in enum_final_content
 
 
 @pytest.mark.lsp
@@ -818,4 +716,93 @@ struct SequentialTest {
         "Brace mismatch - file structure corrupted"
     )
     assert "struct SequentialTest" in final_content, "Struct declaration missing"
+
+@pytest.mark.lsp
+def test_symbol_body_replacement_without_dotted_paths(built_swift_environment):
+    """Test symbol body replacement without using dotted path notation.
+    
+    This test verifies that we can replace entire symbol bodies (structs, classes, enums)
+    without using dotted paths, which is the most reliable approach.
+    """
+    project_root, sources_dir, create_swift_file = built_swift_environment
+    
+    # Test 1: Replace entire struct body
+    content = """import Foundation
+
+struct TestStructForReplacement {
+    var oldProperty: Int = 10
+    
+    func oldMethod() {
+        print("old method")
+    }
+}
+
+class TestClassForReplacement {
+    var oldClassProperty: String = "old"
+    
+    init() {
+        print("old init")
+    }
+}"""
+    file_path = create_swift_file(content, "NonDottedPathReplacement.swift")
+    
+    # Replace struct body
+    new_struct_body = """struct TestStructForReplacement {
+    var newProperty: Int = 20
+    var anotherProperty: String = "new"
+    
+    func newMethod() {
+        print("new method")
+    }
+    
+    func additionalMethod() {
+        print("additional functionality")
+    }
+}"""
+    
+    result_struct = swift_replace_symbol_body(
+        file_path, 
+        "TestStructForReplacement", 
+        new_struct_body
+    )
+    handle_tool_result(result_struct)
+    
+    # Replace class body
+    new_class_body = """class TestClassForReplacement {
+    var newClassProperty: String = "new"
+    var extraProperty: Bool = true
+    
+    init() {
+        print("new init")
+    }
+    
+    func newClassMethod() {
+        print("new class method")
+    }
+}"""
+    
+    result_class = swift_replace_symbol_body(
+        file_path,
+        "TestClassForReplacement", 
+        new_class_body
+    )
+    handle_tool_result(result_class)
+    
+    # Verify replacements
+    with open(file_path, encoding="utf-8") as f:
+        final_content = f.read()
+    
+    # Check struct replacement
+    assert "newProperty: Int = 20" in final_content, "New struct property not found"
+    assert "anotherProperty: String" in final_content, "Another property not found"
+    assert "additionalMethod" in final_content, "Additional method not found"
+    assert "oldProperty" not in final_content, "Old struct property still present"
+    assert "oldMethod" not in final_content, "Old struct method still present"
+    
+    # Check class replacement  
+    assert "newClassProperty: String = \"new\"" in final_content, "New class property not found"
+    assert "extraProperty: Bool = true" in final_content, "Extra property not found"
+    assert "newClassMethod" in final_content, "New class method not found"
+    assert "oldClassProperty" not in final_content, "Old class property still present"
+    assert 'print("old init")' not in final_content, "Old init still present"
     # File integrity verified - newlines are preserved by SwiftFileModifier

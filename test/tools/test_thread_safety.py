@@ -265,6 +265,27 @@ let package = Package(
                                 "Files should be processed in parallel, not sequentially"
                             )
 
+    def test_weak_reference_support(self):
+        """Test that thread cache sentinel supports weak references."""
+        import weakref
+
+        from swiftlens.utils.thread_local_lsp import _ThreadCacheSentinel
+
+        # Create a sentinel instance
+        sentinel = _ThreadCacheSentinel()
+
+        # This should not raise "cannot create weak reference to 'object' object"
+        weak_ref = weakref.ref(sentinel)
+
+        # Verify the weak reference works
+        assert weak_ref() is sentinel
+
+        # Delete the original reference
+        del sentinel
+
+        # Weak reference should now return None
+        assert weak_ref() is None
+
     def test_error_handling_specificity(self):
         """Test that specific error types are properly handled with mocked client."""
         with tempfile.TemporaryDirectory() as temp_dir:

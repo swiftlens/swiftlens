@@ -239,8 +239,29 @@ class FileAnalyzer:
                     result_type="SymbolReferenceResult",
                 )
 
+            # Filter references to only those in the current file
+            # This ensures we only return references within the requested file
+            filtered_references = []
+            import os
+
+            normalized_file_path = os.path.abspath(file_path)
+
+            for ref in raw_references:
+                ref_uri = ref.get("uri", "")
+                # Check if the reference is in the current file
+                if ref_uri == file_uri:
+                    filtered_references.append(ref)
+                elif ref_uri.startswith("file://"):
+                    # Extract path from file URI and normalize it
+                    ref_path = ref_uri.replace("file://", "")
+                    ref_path = os.path.abspath(ref_path)
+                    if ref_path == normalized_file_path:
+                        filtered_references.append(ref)
+
             # Format references
-            formatted_references = self.references_op.format_references(raw_references, file_lines)
+            formatted_references = self.references_op.format_references(
+                filtered_references, file_lines
+            )
 
             return self.result_builder.build_reference_result(
                 file_path=file_path,

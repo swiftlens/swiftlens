@@ -48,6 +48,13 @@ _cache_registry_lock = threading.Lock()  # Protects cache registry
 _thread_caches: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
 
 
+# Sentinel class that supports weak references
+class _ThreadCacheSentinel:
+    """Lightweight sentinel object that supports weak references."""
+
+    pass
+
+
 def _get_thread_cache() -> OrderedDict:
     """Get or create the thread-local LRU cache."""
     if not hasattr(_thread_local, "_lru_cache"):
@@ -58,7 +65,7 @@ def _get_thread_cache() -> OrderedDict:
         # Register this thread's cache with weak reference
         thread_id = threading.get_ident()
         with _cache_registry_lock:
-            _thread_caches[thread_id] = object()  # Lightweight sentinel
+            _thread_caches[thread_id] = _ThreadCacheSentinel()  # Lightweight sentinel
     cache = _thread_local._lru_cache
 
     # Ensure counter exists even if cache was created by older version

@@ -94,6 +94,14 @@ You are an interactive partner. Ask clarifying questions, manage complex tasks i
 
 
 @server.tool()
+def get_tool_help(tool_name: str = None) -> dict:
+    """Get concise help for Swift tools. Pass tool_name for specific help, or None for all tools."""
+    from .tools.get_tool_help import get_tool_help as help_func
+
+    return help_func(tool_name)
+
+
+@server.tool()
 @log_tool_execution("swift_analyze_file")
 def swift_analyze_file(file_path: str) -> dict:
     """Analyze a Swift file and extract its symbol structure using SourceKit-LSP."""
@@ -492,14 +500,6 @@ def swift_search_pattern(
             "error": f"Pattern search failed: {str(e)}",
             "error_type": "LSP_ERROR",
         }
-
-
-@server.tool()
-def get_tool_help(tool_name: str = None) -> dict:
-    """Get concise help for Swift tools. Pass tool_name for specific help, or None for all tools."""
-    from .tools.get_tool_help import get_tool_help as help_func
-
-    return help_func(tool_name)
 
 
 @server.tool()
