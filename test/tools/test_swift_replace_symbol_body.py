@@ -720,21 +720,22 @@ struct SequentialTest {
     )
     assert "struct SequentialTest" in final_content, "Struct declaration missing"
 
+
 @pytest.mark.lsp
 def test_symbol_body_replacement_without_dotted_paths(built_swift_environment):
     """Test symbol body replacement without using dotted path notation.
-    
+
     This test verifies that we can replace entire symbol bodies (structs, classes, enums)
     without using dotted paths, which is the most reliable approach.
     """
     project_root, sources_dir, create_swift_file = built_swift_environment
-    
+
     # Test 1: Replace entire struct body
     content = """import Foundation
 
 struct TestStructForReplacement {
     var oldProperty: Int = 10
-    
+
     func oldMethod() {
         print("old method")
     }
@@ -742,68 +743,62 @@ struct TestStructForReplacement {
 
 class TestClassForReplacement {
     var oldClassProperty: String = "old"
-    
+
     init() {
         print("old init")
     }
 }"""
     file_path = create_swift_file(content, "NonDottedPathReplacement.swift")
-    
+
     # Replace struct body
     new_struct_body = """struct TestStructForReplacement {
     var newProperty: Int = 20
     var anotherProperty: String = "new"
-    
+
     func newMethod() {
         print("new method")
     }
-    
+
     func additionalMethod() {
         print("additional functionality")
     }
 }"""
-    
+
     result_struct = swift_replace_symbol_body(
-        file_path, 
-        "TestStructForReplacement", 
-        new_struct_body
+        file_path, "TestStructForReplacement", new_struct_body
     )
     handle_tool_result(result_struct)
-    
+
     # Replace class body
     new_class_body = """class TestClassForReplacement {
     var newClassProperty: String = "new"
     var extraProperty: Bool = true
-    
+
     init() {
         print("new init")
     }
-    
+
     func newClassMethod() {
         print("new class method")
     }
 }"""
-    
-    result_class = swift_replace_symbol_body(
-        file_path,
-        "TestClassForReplacement", 
-        new_class_body
-    )
+
+    result_class = swift_replace_symbol_body(file_path, "TestClassForReplacement", new_class_body)
     handle_tool_result(result_class)
-    
+
     # Verify replacements
     with open(file_path, encoding="utf-8") as f:
         final_content = f.read()
-    
+
     # Check struct replacement
     assert "newProperty: Int = 20" in final_content, "New struct property not found"
     assert "anotherProperty: String" in final_content, "Another property not found"
     assert "additionalMethod" in final_content, "Additional method not found"
     assert "oldProperty" not in final_content, "Old struct property still present"
     assert "oldMethod" not in final_content, "Old struct method still present"
-    
-    # Check class replacement  
-    assert "newClassProperty: String = \"new\"" in final_content, "New class property not found"
+
+    # Check class replacement
+    assert 'newClassProperty: String = "new"' in final_content, "New class property not found"
     assert "extraProperty: Bool = true" in final_content, "Extra property not found"
     assert "newClassMethod" in final_content, "New class method not found"
     assert "oldClassProperty" not in final_content, "Old class property still present"

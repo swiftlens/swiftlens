@@ -318,17 +318,17 @@ def _check_project_setup(project_path: str) -> dict[str, Any]:
                 # Get detailed index information
                 if index_path.is_dir():
                     details = {"exists": True}
-                    
+
                     # Check for v5 index format (modern Swift)
                     v5_path = index_path / "v5"
                     if v5_path.exists():
                         units_path = v5_path / "units"
                         records_path = v5_path / "records"
-                        
+
                         details["format"] = "v5"
                         details["has_units"] = units_path.exists()
                         details["has_records"] = records_path.exists()
-                        
+
                         if units_path.exists():
                             details["units_count"] = len(list(units_path.glob("*")))
                         if records_path.exists():
@@ -339,7 +339,7 @@ def _check_project_setup(project_path: str) -> dict[str, Any]:
                         details["entry_count"] = len(files)
                         details["has_units"] = any(f.name.startswith("v") for f in files)
                         details["has_records"] = any(f.name.startswith("data") for f in files)
-                    
+
                     setup["index_store_details"][str(index_path)] = details
             except Exception as e:
                 setup["index_store_details"][str(index_path)] = {"exists": True, "error": str(e)}
@@ -450,9 +450,13 @@ def _generate_recommendations(diagnostics: dict[str, Any]) -> list[str]:
                 if details.get("format") == "v5":
                     # Check v5 format
                     if not details.get("has_units") or not details.get("has_records"):
-                        recommendations.append(f"Index store at {path} is incomplete. Rebuild project")
+                        recommendations.append(
+                            f"Index store at {path} is incomplete. Rebuild project"
+                        )
                     elif details.get("units_count", 0) == 0:
-                        recommendations.append(f"Index store at {path} has no units. Rebuild project")
+                        recommendations.append(
+                            f"Index store at {path} has no units. Rebuild project"
+                        )
                     elif details.get("records_count", 0) == 0:
                         recommendations.append(
                             f"Index store at {path} missing reference records. Rebuild with: swift build --enable-index-store -Xswiftc -index-store-path -Xswiftc .build/index -Xswiftc -index-include-locals"
