@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
+        os: [macos-latest, macos-14]
         python-version: ["3.13"]
 
     steps:
@@ -36,9 +36,19 @@ jobs:
         sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         xcrun --find sourcekit-lsp || echo "SourceKit-LSP not found"
 
+    - name: Check architecture
+      run: |
+        echo "Architecture: $(uname -m)"
+        echo "macOS version: $(sw_vers -productVersion)"
+        python --version
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # For CI, install without swiftlens-core since it's only available for ARM64
+        # First, create a temporary requirements file without swiftlens-core
+        cat pyproject.toml | python -c "import sys, tomllib; data = tomllib.loads(sys.stdin.read()); deps = [d for d in data['project']['dependencies'] if not d.startswith('swiftlens-core')]; [print(d) for d in deps]" > temp_requirements.txt
+        pip install -r temp_requirements.txt
         pip install -e .[dev]
 
     - name: Check formatting
