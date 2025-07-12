@@ -1,0 +1,27 @@
+# This file defines code ownership for the SwiftLens repository
+# Each line is a file pattern followed by one or more owners
+
+# Global owners for all files
+* @chrisflectionlin
+
+# Swift analysis tools
+/swiftlens/tools/ @chrisflectionlin
+/swiftlens/analysis/ @chrisflectionlin
+
+# LSP integration
+/swiftlens/lsp/ @chrisflectionlin
+
+# Models and API
+/swiftlens/model/ @chrisflectionlin
+
+# Tests
+/test/ @chrisflectionlin
+
+# Documentation
+*.md @chrisflectionlin
+/docs/ @chrisflectionlin
+
+# Configuration files
+/.github/ @chrisflectionlin
+/pyproject.toml @chrisflectionlin
+/Makefile @chrisflectionlin

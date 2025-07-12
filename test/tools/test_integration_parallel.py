@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from swiftlens.tools.swift_analyze_multiple_files import swift_analyze_multiple_files
+from swiftlens.tools.swift_analyze_files import swift_analyze_files
 from swiftlens.tools.swift_find_symbol_references_files import swift_find_symbol_references_files
 
 
@@ -77,7 +77,7 @@ class TestParallelExecutionIntegration:
                 tracker.exit_thread()
 
         # Import the module to patch
-        import swiftlens.tools.swift_analyze_multiple_files as analyze_module
+        import swiftlens.tools.swift_analyze_files as analyze_module
 
         # Save original function
         original_process = analyze_module._process_single_file
@@ -88,14 +88,14 @@ class TestParallelExecutionIntegration:
         try:
             # Mock the LSP client
             with patch(
-                "swiftlens.tools.swift_analyze_multiple_files.managed_lsp_client"
+                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
             ) as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
-                with patch("swiftlens.tools.swift_analyze_multiple_files.FileAnalyzer"):
+                with patch("swiftlens.tools.swift_analyze_files.FileAnalyzer"):
                     # Execute the function
-                    result = swift_analyze_multiple_files(test_files)
+                    result = swift_analyze_files(test_files)
 
                     # Verify parallel execution
                     assert tracker.max_concurrent_threads > 1, (
@@ -218,7 +218,7 @@ class TestParallelExecutionIntegration:
         # Re-import to pick up new environment variable
         import importlib
 
-        import swiftlens.tools.swift_analyze_multiple_files as analyze_module
+        import swiftlens.tools.swift_analyze_files as analyze_module
 
         importlib.reload(analyze_module)
 
@@ -228,14 +228,14 @@ class TestParallelExecutionIntegration:
 
         try:
             with patch(
-                "swiftlens.tools.swift_analyze_multiple_files.managed_lsp_client"
+                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
             ) as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
-                with patch("swiftlens.tools.swift_analyze_multiple_files.FileAnalyzer"):
+                with patch("swiftlens.tools.swift_analyze_files.FileAnalyzer"):
                     # Execute the function
-                    swift_analyze_multiple_files(test_files)
+                    swift_analyze_files(test_files)
 
                     # Verify thread pool size is respected
                     assert tracker.max_concurrent_threads <= 2, (
@@ -274,23 +274,23 @@ class TestParallelExecutionIntegration:
                 symbol_count=1,
             )
 
-        import swiftlens.tools.swift_analyze_multiple_files as analyze_module
+        import swiftlens.tools.swift_analyze_files as analyze_module
 
         original_process = analyze_module._process_single_file
         analyze_module._process_single_file = count_updates
 
         try:
             with patch(
-                "swiftlens.tools.swift_analyze_multiple_files.managed_lsp_client"
+                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
             ) as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
-                with patch("swiftlens.tools.swift_analyze_multiple_files.FileAnalyzer"):
+                with patch("swiftlens.tools.swift_analyze_files.FileAnalyzer"):
                     # Execute the function multiple times
                     for _ in range(5):
                         update_counter = 0
-                        result = swift_analyze_multiple_files(test_files)
+                        result = swift_analyze_files(test_files)
 
                         # Verify all files were processed
                         assert update_counter == len(test_files)

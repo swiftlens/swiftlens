@@ -35,6 +35,7 @@ def _convert_lsp_symbol_kind_to_string(kind: int) -> str:
         LSPSymbolKind.FUNCTION: "Function",
         LSPSymbolKind.VARIABLE: "Variable",
         LSPSymbolKind.CONSTANT: "Constant",
+        LSPSymbolKind.STRUCT: "Struct",
     }
 
     return kind_map.get(kind, "Unknown")

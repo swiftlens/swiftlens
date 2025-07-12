@@ -10,40 +10,25 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
 
     # Tool data structured to build ToolHelpInfo objects
     tools_data = {
-        "swift_analyze_file": {
-            "purpose": "Extract symbol structure from a Swift file using SourceKit-LSP",
+        "swift_analyze_files": {
+            "purpose": "Analyze Swift files and extract symbol structures (supports single or multiple files)",
             "use_cases": [
-                "Get overview of classes, structs, functions in a file",
+                "Get overview of classes, structs, functions in files",
                 "Understand file structure before editing",
-                "Generate code documentation or navigation",
-            ],
-            "parameters": {
-                "file_path": "Path to Swift file (prefer relative paths like 'src/MyFile.swift')"
-            },
-            "output_format": {
-                "symbols": "Hierarchical symbol tree",
-                "format": "types and names",
-            },
-            "examples": [
-                "swift_analyze_file('src/MyClass.swift') -> 'User (struct)\\n  id (property)\\n  validate() (method)'"
-            ],
-        },
-        "swift_analyze_multiple_files": {
-            "purpose": "Batch analyze multiple Swift files for symbol structures",
-            "use_cases": [
                 "Analyze entire modules or directories",
-                "Generate project-wide documentation",
-                "Understand multi-file architecture",
+                "Generate code documentation or navigation",
+                "Batch process multiple files efficiently",
             ],
             "parameters": {
-                "file_paths": "List of Swift file paths (prefer relative paths like ['src/A.swift', 'src/B.swift'])"
+                "file_paths": "List of Swift file paths (prefer relative paths like ['src/MyFile.swift'] even for single file)"
             },
             "output_format": {
-                "symbols": "Combined symbol trees",
-                "format": "file-by-file breakdown",
+                "symbols": "Hierarchical symbol tree per file",
+                "format": "file-by-file breakdown with types and names",
             },
             "examples": [
-                "swift_analyze_multiple_files(['src/A.swift', 'src/B.swift']) -> file-by-file symbol breakdown"
+                "swift_analyze_files(['src/MyClass.swift']) -> single file analysis",
+                "swift_analyze_files(['src/A.swift', 'src/B.swift']) -> multi-file symbol breakdown",
             ],
         },
         "swift_check_environment": {
@@ -75,7 +60,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
             },
             "output_format": {
                 "references": "Reference locations per file",
-                "format": "file-by-file breakdown with line:character positions",
+                "format": "file-by-file breakdown with line:character positions (line:1-based, character:0-based)",
             },
             "examples": [
                 "swift_find_symbol_references_files(['src/App.swift', 'src/User.swift'], 'User') -> per-file reference breakdown"
@@ -91,7 +76,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
             "parameters": {
                 "file_path": "File path (prefer relative paths like 'src/App.swift')",
                 "line": "Line number (1-based)",
-                "character": "Character position (1-based)",
+                "character": "Character position (0-based)",
             },
             "output_format": {
                 "type": "Type signature",
@@ -132,7 +117,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
             },
             "output_format": {
                 "definition": "Definition location",
-                "format": "file:line:character",
+                "format": "file:line:character (line:1-based, character:0-based)",
             },
             "examples": [
                 "swift_get_symbol_definition('src/App.swift', 'User') -> '/path/User.swift:5:12'"
@@ -250,7 +235,7 @@ def get_tool_help(tool_name: str = None) -> dict[str, Any]:
             },
             "output_format": {
                 "matches": "Match locations",
-                "format": "line:char positions with optional context",
+                "format": "line:char positions with optional context (line:1-based, character:0-based)",
             },
             "examples": [
                 "swift_search_pattern('src/App.swift', 'func.*calculate') -> '10:4 func calculateTotal()\\n25:8 func calculateTax()'"

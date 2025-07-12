@@ -11,7 +11,7 @@ including actors, generics, protocols with associated types, result builders, et
 import pytest
 
 # Add src directory to path for imports
-from swiftlens.tools.swift_analyze_file import swift_analyze_file
+from swiftlens.tools.swift_analyze_files import swift_analyze_files
 from swiftlens.tools.swift_find_symbol_references_files import swift_find_symbol_references_files
 from swiftlens.tools.swift_get_declaration_context import swift_get_declaration_context
 
@@ -343,14 +343,17 @@ def complex_features_file(built_swift_environment):
 @pytest.mark.lsp
 def test_analyze_complex_swift_features(complex_features_file):
     """Test 1: Analyzing complex Swift file with advanced features."""
-    result = swift_analyze_file(complex_features_file)
+    result = swift_analyze_files([complex_features_file], allow_outside_cwd=True)
 
     # Ensure we got a successful result
     assert isinstance(result, dict), f"Expected dict response, got {type(result)}"
     assert result.get("success", False), f"Analysis failed: {result.get('error', 'Unknown error')}"
 
     # Extract symbols from the response
-    symbols = result.get("symbols", [])
+    # swift_analyze_files returns a multi-file format
+    files_data = result.get("files", {})
+    file_result = files_data.get(complex_features_file, {})
+    symbols = file_result.get("symbols", [])
 
     # Create a string representation of all symbols for matching
     symbol_strings = []
@@ -467,7 +470,7 @@ def test_symbol_references_in_generic_context(complex_features_file):
 @pytest.mark.lsp
 def test_extension_symbol_detection(complex_features_file):
     """Test 4: Extension symbol detection."""
-    result = swift_analyze_file(complex_features_file)
+    result = swift_analyze_files([complex_features_file], allow_outside_cwd=True)
 
     # Ensure we got a successful result
     assert isinstance(result, dict), f"Expected dict response, got {type(result)}"
@@ -499,7 +502,7 @@ def test_extension_symbol_detection(complex_features_file):
 @pytest.mark.lsp
 def test_property_wrapper_detection(complex_features_file):
     """Test 5: Property wrapper and advanced attribute detection."""
-    result = swift_analyze_file(complex_features_file)
+    result = swift_analyze_files([complex_features_file], allow_outside_cwd=True)
     context_result = swift_get_declaration_context(complex_features_file)
 
     wrapper_indicators = ["@propertyWrapper", "UserDefault", "Atomic"]
