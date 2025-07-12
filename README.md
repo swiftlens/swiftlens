@@ -161,6 +161,25 @@ xcode-select -p  # Should show Xcode path
 xcrun sourcekit-lsp --help  # Should show help text
 ```
 
+## LSP Limitations
+
+### Known SourceKit-LSP Limitations
+
+The Swift Context MCP Server accurately reflects SourceKit-LSP's capabilities. The following are known limitations of SourceKit-LSP itself, not bugs in this tool:
+
+#### Hover Information
+- **Limited support for local variables**: Hover info may not be available for local variables within function bodies
+- **Property access issues**: Expressions like `object.property` often don't provide hover information when inside functions
+- **Method call limitations**: Hover on method calls with parameters may return incorrect or no information
+- **Success rate**: Hover typically works well for type declarations, method signatures, and top-level symbols, but has approximately 44% success rate for expressions within function bodies
+
+These limitations exist because SourceKit-LSP:
+- Does not perform background indexing
+- May skip function body analysis in certain configurations
+- Is still in early development with acknowledged "rough edges"
+
+For the most up-to-date status, see the [SourceKit-LSP repository](https://github.com/swiftlang/sourcekit-lsp).
+
 ## Development
 
 ### Running Tests

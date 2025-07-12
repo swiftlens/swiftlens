@@ -438,45 +438,73 @@ def test_symbol_hierarchy_preservation(single_swift_file):
         assert "name" in child_names, "Should find name property"
         assert "email" in child_names, "Should find email property"
         assert "validateEmail()" in child_names, "Should find validateEmail method"
-        
+
         # Comprehensive character position validation for nested symbols
         child_map = {child["name"]: child for child in children}
-        
+
         # Validate character positions for properties (indented by 4 spaces)
         # Line numbers adjusted for actual content: User struct starts at line 4
-        assert child_map["id"]["line"] == 5, f"id property should be at line 5, got {child_map['id']['line']}"
-        assert child_map["id"]["character"] == 4, f"id property should start at character 4 (after 4 spaces), got {child_map['id']['character']}"
-        
-        assert child_map["name"]["line"] == 6, f"name property should be at line 6, got {child_map['name']['line']}"
-        assert child_map["name"]["character"] == 4, f"name property should start at character 4 (after 4 spaces), got {child_map['name']['character']}"
-        
-        assert child_map["email"]["line"] == 7, f"email property should be at line 7, got {child_map['email']['line']}"
-        assert child_map["email"]["character"] == 4, f"email property should start at character 4 (after 4 spaces), got {child_map['email']['character']}"
-        
+        assert child_map["id"]["line"] == 5, (
+            f"id property should be at line 5, got {child_map['id']['line']}"
+        )
+        assert child_map["id"]["character"] == 4, (
+            f"id property should start at character 4 (after 4 spaces), got {child_map['id']['character']}"
+        )
+
+        assert child_map["name"]["line"] == 6, (
+            f"name property should be at line 6, got {child_map['name']['line']}"
+        )
+        assert child_map["name"]["character"] == 4, (
+            f"name property should start at character 4 (after 4 spaces), got {child_map['name']['character']}"
+        )
+
+        assert child_map["email"]["line"] == 7, (
+            f"email property should be at line 7, got {child_map['email']['line']}"
+        )
+        assert child_map["email"]["character"] == 4, (
+            f"email property should start at character 4 (after 4 spaces), got {child_map['email']['character']}"
+        )
+
         # Validate character position for method
-        assert child_map["validateEmail()"]["line"] == 9, f"validateEmail() should be at line 9, got {child_map['validateEmail()']['line']}"
-        assert child_map["validateEmail()"]["character"] == 4, f"validateEmail() should start at character 4 (after 4 spaces), got {child_map['validateEmail()']['character']}"
-    
+        assert child_map["validateEmail()"]["line"] == 9, (
+            f"validateEmail() should be at line 9, got {child_map['validateEmail()']['line']}"
+        )
+        assert child_map["validateEmail()"]["character"] == 4, (
+            f"validateEmail() should start at character 4 (after 4 spaces), got {child_map['validateEmail()']['character']}"
+        )
+
     # Test UserService class nested symbols
     user_service = next((s for s in symbols if s["name"] == "UserService"), None)
     assert user_service is not None, "Should find UserService class"
-    
+
     if "children" in user_service:
         service_children = user_service["children"]
         service_child_map = {child["name"]: child for child in service_children}
-        
+
         # UserService starts at line 14, so its children are offset from there
         assert "users" in service_child_map, "Should find users property"
-        assert service_child_map["users"]["line"] == 15, f"users property should be at line 15, got {service_child_map['users']['line']}"
-        assert service_child_map["users"]["character"] == 4, f"users property should start at character 4 (after 4 spaces), got {service_child_map['users']['character']}"
-        
+        assert service_child_map["users"]["line"] == 15, (
+            f"users property should be at line 15, got {service_child_map['users']['line']}"
+        )
+        assert service_child_map["users"]["character"] == 4, (
+            f"users property should start at character 4 (after 4 spaces), got {service_child_map['users']['character']}"
+        )
+
         assert "addUser(_:)" in service_child_map, "Should find addUser method"
-        assert service_child_map["addUser(_:)"]["line"] == 17, f"addUser(_:) should be at line 17, got {service_child_map['addUser(_:)']['line']}"
-        assert service_child_map["addUser(_:)"]["character"] == 4, f"addUser(_:) should start at character 4 (after 4 spaces), got {service_child_map['addUser(_:)']['character']}"
-        
+        assert service_child_map["addUser(_:)"]["line"] == 17, (
+            f"addUser(_:) should be at line 17, got {service_child_map['addUser(_:)']['line']}"
+        )
+        assert service_child_map["addUser(_:)"]["character"] == 4, (
+            f"addUser(_:) should start at character 4 (after 4 spaces), got {service_child_map['addUser(_:)']['character']}"
+        )
+
         assert "fetchUser(by:)" in service_child_map, "Should find fetchUser method"
-        assert service_child_map["fetchUser(by:)"]["line"] == 21, f"fetchUser(by:) should be at line 21, got {service_child_map['fetchUser(by:)']['line']}"
-        assert service_child_map["fetchUser(by:)"]["character"] == 4, f"fetchUser(by:) should start at character 4 (after 4 spaces), got {service_child_map['fetchUser(by:)']['character']}"
+        assert service_child_map["fetchUser(by:)"]["line"] == 21, (
+            f"fetchUser(by:) should be at line 21, got {service_child_map['fetchUser(by:)']['line']}"
+        )
+        assert service_child_map["fetchUser(by:)"]["character"] == 4, (
+            f"fetchUser(by:) should start at character 4 (after 4 spaces), got {service_child_map['fetchUser(by:)']['character']}"
+        )
 
 
 @pytest.mark.performance

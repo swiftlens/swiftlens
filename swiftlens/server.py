@@ -28,12 +28,12 @@ except ImportError:
     raise
 from mcp.server import FastMCP
 
-# Import models for consistent error handling
-from .model.models import MultiFileAnalysisResponse, ErrorType
-
 # Use relative imports for local modules
 from .dashboard.logger import log_tool_execution
 from .dashboard.web_server import start_dashboard_server, stop_dashboard_server
+
+# Import models for consistent error handling
+from .model.models import ErrorType, MultiFileAnalysisResponse
 from .utils.validation import (
     validate_swift_file_path,
     validate_swift_file_path_for_writing,

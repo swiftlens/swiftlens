@@ -334,7 +334,7 @@ class FileAnalyzer:
                     file_path=file_path,
                     line=line,
                     character=character,
-                    error_message="No hover information available at this position",
+                    error_message="No hover information available at this position. Note: SourceKit-LSP has limited support for hover on local variables and property access within function bodies",
                     result_type="HoverInfoResult",
                 )
 

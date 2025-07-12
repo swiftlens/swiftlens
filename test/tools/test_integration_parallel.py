@@ -87,9 +87,7 @@ class TestParallelExecutionIntegration:
 
         try:
             # Mock the LSP client
-            with patch(
-                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
-            ) as mock_client:
+            with patch("swiftlens.tools.swift_analyze_files.managed_lsp_client") as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
@@ -227,9 +225,7 @@ class TestParallelExecutionIntegration:
         analyze_module._process_single_file = track_process_single_file
 
         try:
-            with patch(
-                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
-            ) as mock_client:
+            with patch("swiftlens.tools.swift_analyze_files.managed_lsp_client") as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
@@ -280,9 +276,7 @@ class TestParallelExecutionIntegration:
         analyze_module._process_single_file = count_updates
 
         try:
-            with patch(
-                "swiftlens.tools.swift_analyze_files.managed_lsp_client"
-            ) as mock_client:
+            with patch("swiftlens.tools.swift_analyze_files.managed_lsp_client") as mock_client:
                 mock_client_instance = MagicMock()
                 mock_client.return_value.__enter__.return_value = mock_client_instance
 
