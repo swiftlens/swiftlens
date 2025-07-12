@@ -671,3 +671,85 @@ def test_relative_path_handling(built_swift_environment, monkeypatch):
 
     # Run with retry logic
     run_test_with_retry(_run_test, relative_path)
+
+
+@pytest.mark.lsp
+def test_symbol_positions_overview(built_swift_environment):
+    """Test that swift_get_symbols_overview reports accurate line positions."""
+    _, _, create_swift_file = built_swift_environment
+
+    # Create Swift file with types at known positions
+    swift_content = """// Line 1: Comment
+import Foundation
+
+class FirstClass {  // Line 4
+    func method() {}
+}
+
+struct SecondStruct {  // Line 8
+    let value: Int
+}
+
+// Functions should be excluded
+func someFunction() {  // Line 12
+    print("test")
+}
+
+enum ThirdEnum {  // Line 17
+    case option
+}
+
+protocol FourthProtocol {  // Line 21
+    func required()
+}
+
+// Variables should be excluded
+let globalVar = 42  // Line 24
+
+// Unicode type
+struct 中文结构 {  // Line 29
+    let prop: String
+}"""
+
+    test_file = create_swift_file(swift_content, "OverviewPositionTest.swift")
+    result = swift_get_symbols_overview(test_file)
+
+    # Validate success
+    assert result["success"], f"Overview should succeed: {result.get('error', '')}"
+
+    symbols = result["top_level_symbols"]
+    symbol_map = {symbol["name"]: symbol for symbol in symbols}
+
+    # Verify we only get types (not functions or variables)
+    assert "someFunction" not in symbol_map, "Functions should be excluded from overview"
+    assert "globalVar" not in symbol_map, "Variables should be excluded from overview"
+
+    # Verify exact positions for types
+    assert "FirstClass" in symbol_map, "Should find FirstClass"
+    assert symbol_map["FirstClass"]["line"] == 4, (
+        f"FirstClass should be at line 4, got {symbol_map['FirstClass']['line']}"
+    )
+    assert symbol_map["FirstClass"]["character"] == 0, (
+        f"FirstClass should be at character 0, got {symbol_map['FirstClass']['character']}"
+    )
+
+    assert "SecondStruct" in symbol_map, "Should find SecondStruct"
+    assert symbol_map["SecondStruct"]["line"] == 8, (
+        f"SecondStruct should be at line 8, got {symbol_map['SecondStruct']['line']}"
+    )
+
+    assert "ThirdEnum" in symbol_map, "Should find ThirdEnum"
+    assert symbol_map["ThirdEnum"]["line"] == 17, (
+        f"ThirdEnum should be at line 17, got {symbol_map['ThirdEnum']['line']}"
+    )
+
+    assert "FourthProtocol" in symbol_map, "Should find FourthProtocol"
+    assert symbol_map["FourthProtocol"]["line"] == 21, (
+        f"FourthProtocol should be at line 21, got {symbol_map['FourthProtocol']['line']}"
+    )
+
+    # Unicode type
+    assert "中文结构" in symbol_map, "Should find Unicode struct"
+    assert symbol_map["中文结构"]["line"] == 29, (
+        f"中文结构 should be at line 29, got {symbol_map['中文结构']['line']}"
+    )

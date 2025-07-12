@@ -22,6 +22,24 @@ class SymbolAnalyzer:
         kind = symbol_data.get("kind", 0)
         kind_name = SymbolKind.get_name(kind)
 
+        # Extract position information
+        # LSP can return position data in two formats:
+        # 1. DocumentSymbol format: symbol_data['range']['start']
+        # 2. SymbolInformation format: symbol_data['location']['range']['start']
+        line = 1  # Default to line 1
+        character = 0  # Default to character 0
+
+        if "range" in symbol_data and "start" in symbol_data["range"]:
+            # DocumentSymbol format (newer LSP)
+            start = symbol_data["range"]["start"]
+            line = start.get("line", 0) + 1  # LSP uses 0-based lines, we use 1-based
+            character = start.get("character", 0)
+        elif "location" in symbol_data and "range" in symbol_data["location"]:
+            # SymbolInformation format (older LSP)
+            start = symbol_data["location"]["range"]["start"]
+            line = start.get("line", 0) + 1  # LSP uses 0-based lines, we use 1-based
+            character = start.get("character", 0)
+
         # Process children recursively
         children = []
         for child_data in symbol_data.get("children", []):
@@ -31,6 +49,8 @@ class SymbolAnalyzer:
             "name": name,
             "kind": kind,
             "kind_name": kind_name,
+            "line": line,
+            "character": character,
             "children": children,
             "child_count": len(children),
         }

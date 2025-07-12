@@ -115,10 +115,15 @@ def _convert_symbol_to_model(symbol: dict) -> SwiftSymbolInfo:
             # Skip invalid children but continue
             continue
 
+    # Get line and character from the formatted symbol
+    # The format_symbol function now adds these directly to the symbol dict
+    line = symbol.get("line", 1)
+    character = symbol.get("character", 0)
+
     return SwiftSymbolInfo(
         name=symbol["name"],
         kind=symbol_kind,
-        line=symbol.get("range", {}).get("start", {}).get("line", 1),
-        character=symbol.get("range", {}).get("start", {}).get("character", 0),
+        line=line,
+        character=character,
         children=children,
     )
