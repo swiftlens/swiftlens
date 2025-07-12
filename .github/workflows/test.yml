@@ -10,14 +10,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        exclude:
-          # Skip some macOS combinations to save CI time
-          - os: macos-latest
-            python-version: "3.10"
-          - os: macos-latest
-            python-version: "3.11"
+        os: [macos-latest]
+        python-version: ["3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -57,13 +51,8 @@ jobs:
 
     - name: Run tests
       run: |
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          # Run unit tests only on Ubuntu (no LSP)
-          make test-unit
-        else
-          # Run full test suite on macOS (includes LSP tests)
-          make test
-        fi
+        # Run full test suite on macOS (includes LSP tests)
+        make test
 
     - name: Upload test results
       if: always()

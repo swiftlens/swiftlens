@@ -32,7 +32,7 @@ AI Agent (Claude/GPT) → MCP Protocol → SwiftLens → SourceKit-LSP → Swift
 ### Prerequisites
 
 - **macOS** (required for SourceKit-LSP)
-- **Python 3.10+**
+- **Python 3.13**
 - **Xcode** (full installation from App Store, not just Command Line Tools)
 
 ## Quick Start

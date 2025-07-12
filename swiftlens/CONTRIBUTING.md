@@ -7,7 +7,7 @@ Thank you for your interest in contributing to SwiftLens MCP Server! This guide 
 ### Prerequisites
 
 - **macOS** (SourceKit-LSP dependency)
-- **Python 3.10+** (with pip included)
+- **Python 3.13** (with pip included)
 - **Git** (for cloning repository)
 - **Bash** (for running setup scripts)
 - **Full Xcode installation** (required to run LSP integration tests)
