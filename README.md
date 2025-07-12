@@ -161,11 +161,11 @@ xcode-select -p  # Should show Xcode path
 xcrun sourcekit-lsp --help  # Should show help text
 ```
 
-## LSP Limitations
+## SourceKit-LSP Limitations
 
 ### Known SourceKit-LSP Limitations
 
-The Swift Context MCP Server accurately reflects SourceKit-LSP's capabilities. The following are known limitations of SourceKit-LSP itself, not bugs in this tool:
+The SwiftLens MCP Server accurately reflects SourceKit-LSP's capabilities. The following are known limitations of SourceKit-LSP itself, not bugs in this tool:
 
 #### Hover Information
 - **Limited support for local variables**: Hover info may not be available for local variables within function bodies
