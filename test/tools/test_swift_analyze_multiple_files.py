@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Test file for swift_analyze_multiple_files tool using pytest.
+Test file for swift_analyze_files tool using pytest.
 
-This test validates the swift_analyze_multiple_files tool functionality with LSP.
+This test validates the swift_analyze_files tool functionality with LSP.
 """
 
 import os
@@ -10,7 +10,7 @@ import os
 import pytest
 
 # Add src directory to path for imports
-from swiftlens.tools.swift_analyze_multiple_files import swift_analyze_multiple_files
+from swiftlens.tools.swift_analyze_files import swift_analyze_files
 
 # Import test helpers - ensure proper path resolution
 test_dir = os.path.dirname(__file__)
@@ -132,7 +132,7 @@ def test_multiple_valid_swift_files(multiple_swift_files):
     Covers original test 1.
     Tests analyzing multiple valid Swift files.
     """
-    result = swift_analyze_multiple_files(multiple_swift_files)
+    result = swift_analyze_files(multiple_swift_files)
 
     # Validate response structure
     assert isinstance(result, dict), "Result should be a dictionary"
@@ -170,7 +170,7 @@ def test_mix_valid_invalid_files(multiple_swift_files):
     Tests mix of valid and invalid files.
     """
     mixed_files = multiple_swift_files + ["/path/that/does/not/exist.swift"]
-    result = swift_analyze_multiple_files(mixed_files)
+    result = swift_analyze_files(mixed_files)
 
     # Validate response structure
     assert isinstance(result, dict), "Result should be a dictionary"
@@ -203,7 +203,7 @@ def test_empty_file_list():
     Covers original test 3.
     Tests empty file list handling.
     """
-    result = swift_analyze_multiple_files([])
+    result = swift_analyze_files([])
 
     # Validate response structure
     assert isinstance(result, dict), "Result should be a dictionary"
@@ -222,7 +222,7 @@ def test_single_file_analysis(multiple_swift_files):
     Covers original test 4.
     Tests single file analysis (edge case).
     """
-    result = swift_analyze_multiple_files([multiple_swift_files[0]])
+    result = swift_analyze_files([multiple_swift_files[0]])
 
     # Validate response structure
     assert isinstance(result, dict), "Result should be a dictionary"
@@ -257,7 +257,7 @@ def test_non_swift_files_in_list(built_swift_environment):
     non_swift_file = create_swift_file("# This is not Swift", "README.md")
 
     mixed_types = [swift_file, non_swift_file]
-    result = swift_analyze_multiple_files(mixed_types)
+    result = swift_analyze_files(mixed_types, allow_outside_cwd=True)
 
     # Validate response structure
     assert isinstance(result, dict), "Result should be a dictionary"

@@ -28,6 +28,9 @@ except ImportError:
     raise
 from mcp.server import FastMCP
 
+# Import models for consistent error handling
+from .model.models import MultiFileAnalysisResponse, ErrorType
+
 # Use relative imports for local modules
 from .dashboard.logger import log_tool_execution
 from .dashboard.web_server import start_dashboard_server, stop_dashboard_server
@@ -51,7 +54,7 @@ Your primary directive is to operate with maximum efficiency, minimizing token u
 **Strategic Workflow for Analysis:**
 1.  **Orient (High-Level Scan):** ALWAYS start with `swift_get_symbols_overview`. This gives you a low-cost architectural map of a file before committing to a full analysis.
 2.  **Investigate (Targeted Exploration):** Use tools like `swift_find_symbol_references_files`, `swift_get_symbol_definition`, and `swift_get_hover_info` to trace relationships and gather specific details without reading entire files.
-3.  **Analyze (Deep Dive):** Only use `swift_analyze_file` when a comprehensive, full-file symbol analysis is absolutely necessary for the task.
+3.  **Analyze (Deep Dive):** Only use `swift_analyze_files` when a comprehensive, full-file symbol analysis is absolutely necessary for the task.
 4.  **Present (Clean Analysis):** When presenting analysis results, focus on the essential information needed for the task.
 
 ### Code Modification Workflow
@@ -102,73 +105,41 @@ def get_tool_help(tool_name: str = None) -> dict:
 
 
 @server.tool()
-@log_tool_execution("swift_analyze_file")
-def swift_analyze_file(file_path: str) -> dict:
-    """Analyze a Swift file and extract its symbol structure using SourceKit-LSP."""
-    # Validate file path for security
-    is_valid, sanitized_path, error_msg = validate_swift_file_path(file_path)
-    if not is_valid:
-        return {"success": False, "error": error_msg, "error_type": "VALIDATION_ERROR"}
-
-    try:
-        from .tools.swift_analyze_file import swift_analyze_file as analyze_func
-
-        return analyze_func(sanitized_path)
-    except FileNotFoundError:
-        return {
-            "success": False,
-            "error": f"File not found: {file_path}",
-            "error_type": "FILE_NOT_FOUND",
-        }
-    except PermissionError:
-        return {
-            "success": False,
-            "error": f"Permission denied: {file_path}",
-            "error_type": "VALIDATION_ERROR",
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Analysis failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
-
-
-@server.tool()
-@log_tool_execution("swift_analyze_multiple_files")
-def swift_analyze_multiple_files(file_paths: list[str]) -> dict:
-    """Analyze multiple Swift files and extract their symbol structures."""
+@log_tool_execution("swift_analyze_files")
+def swift_analyze_files(file_paths: list[str]) -> dict:
+    """Analyze Swift files and extract symbol structures (supports single or multiple files)."""
     # Validate all file paths for security
     if not file_paths or not isinstance(file_paths, list):
-        return {
-            "success": False,
-            "error": "file_paths must be a non-empty list",
-            "error_type": "VALIDATION_ERROR",
-        }
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            error="file_paths must be a non-empty list",
+            error_type=ErrorType.VALIDATION_ERROR,
+        ).model_dump(mode="json")
 
     sanitized_paths = []
     for file_path in file_paths:
         is_valid, sanitized_path, error_msg = validate_swift_file_path(file_path)
         if not is_valid:
-            return {
-                "success": False,
-                "error": f"Invalid file path '{file_path}': {error_msg}",
-                "error_type": "VALIDATION_ERROR",
-            }
+            return MultiFileAnalysisResponse(
+                success=False,
+                files={},
+                error=f"Invalid file path '{file_path}': {error_msg}",
+                error_type=ErrorType.VALIDATION_ERROR,
+            ).model_dump(mode="json")
         sanitized_paths.append(sanitized_path)
 
     try:
-        from .tools.swift_analyze_multiple_files import (
-            swift_analyze_multiple_files as analyze_func,
-        )
+        from .tools.swift_analyze_files import swift_analyze_files as analyze_func
 
         return analyze_func(sanitized_paths)
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Multiple file analysis failed: {str(e)}",
-            "error_type": "LSP_ERROR",
-        }
+        return MultiFileAnalysisResponse(
+            success=False,
+            files={},
+            error=f"File analysis failed: {str(e)}",
+            error_type=ErrorType.LSP_ERROR,
+        ).model_dump(mode="json")
 
 
 @server.tool()

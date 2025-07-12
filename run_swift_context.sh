@@ -5,7 +5,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="$SCRIPT_DIR/.venv"
-SERVER_PATH="$SCRIPT_DIR/src/server.py"
+SERVER_PATH="$SCRIPT_DIR/swiftlens/server.py"
 
 # Check if virtual environment exists
 if [ ! -d "$VENV_PATH" ]; then
@@ -27,6 +27,6 @@ else
 fi
 
 # Run the MCP server
-exec python3 "$SERVER_PATH" "$@" 
+exec swiftlens "$@" 
 
 echo "✅ SwiftLens MCP server is now running..."

@@ -39,6 +39,38 @@ Thank you for your interest in contributing to SwiftLens MCP Server! This guide 
    make test-unit  # Quick functionality test
    ```
 
+### Development Mode Installation
+
+When developing SwiftLens, you need to install the package in "editable" mode so your changes are reflected immediately:
+
+```bash
+# Install in development mode (do this once after cloning)
+pip install -e .
+```
+
+**How editable mode works:**
+- Creates a link to your source code instead of copying files
+- Changes to Python files are picked up automatically
+- No need to reinstall when modifying existing code
+
+**Changes that are picked up automatically:**
+- ✅ Modifications to existing Python files (.py)
+- ✅ Changes to function implementations
+- ✅ Adding new functions to existing modules
+- ✅ Modifying imports within existing files
+
+**Changes that require reinstalling:**
+- ❌ Changes to `pyproject.toml` (dependencies, entry points, metadata)
+- ❌ Adding new Python packages/directories
+- ❌ Changing the package structure significantly
+- ❌ Adding new console scripts or entry points
+
+**Typical development workflow:**
+1. Run `pip install -e .` once when setting up the project
+2. Make your code changes
+3. Run `./run_swift_context.sh` - changes are automatically reflected
+4. Only reinstall if you modify `pyproject.toml` or package structure
+
 ## Project Structure
 
 ```
