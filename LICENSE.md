@@ -1,4 +1,4 @@
-Elastic License 2.0
+SwiftLens Non-Commercial Use License 1.0
 
 This license governs use of the accompanying software (“Software”), and your use of the Software constitutes acceptance of this license.
 
