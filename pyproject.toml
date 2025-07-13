@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "swiftlens"
-version = "0.2.13"
+version = "0.2.14"
 description = "SwiftLens is a Model Context Protocol (MCP) server that provides deep, semantic-level analysis of Swift codebases to any AI models. By integrating directly with Apple's SourceKit-LSP, SwiftLens enables AI models to understand Swift code with compiler-grade accuracy."
 authors = [{name="SwiftLens Devs", email="devs@swiftlens.tools"}]
 requires-python = ">=3.10"
