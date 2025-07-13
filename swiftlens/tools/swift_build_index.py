@@ -8,6 +8,7 @@ import subprocess
 import time
 from typing import Any
 
+from swiftlens.compiler.error_parser import SwiftErrorParser
 from swiftlens.model.models import BuildIndexResponse, ErrorType
 from swiftlens.utils.validation import validate_project_path
 
@@ -41,6 +42,23 @@ _SANITIZATION_PATTERNS = [
 # Valid scheme name pattern (alphanumeric, hyphens, underscores, literal spaces only - no newlines/tabs)
 _SCHEME_NAME_PATTERN = re.compile(r"^[\w\-]+(?: [\w\-]+)*$")
 
+# Constants for error summarization and token optimization
+COMPRESSION_THRESHOLDS = {
+    "NONE": 1000,  # Below this, no compression
+    "MODERATE": 5000,  # Below this, moderate compression
+    "AGGRESSIVE": None,  # Above previous, maximum compression
+}
+
+# Error pattern groups for categorizing and compressing errors
+ERROR_PATTERNS = {
+    "ambiguous": re.compile(r"ambiguous use of '([^']+)'|'([^']+)' is ambiguous"),
+    "concurrency": re.compile(r"var '([^']+)' is not concurrency-safe"),
+    "conformance": re.compile(r"type '([^']+)' does not conform to protocol '([^']+)'"),
+    "scope": re.compile(r"cannot find '([^']+)' in scope"),
+    "redeclaration": re.compile(r"invalid redeclaration of '([^']+)'"),
+    "no_member": re.compile(r"value of type '([^']+)' has no member '([^']+)'"),
+}
+
 
 def _sanitize_build_output(output: str) -> str:
     """Sanitize build output to prevent sensitive information leakage.
@@ -56,6 +74,213 @@ def _sanitize_build_output(output: str) -> str:
         sanitized = pattern.sub(replacement, sanitized)
 
     return sanitized
+
+
+def _summarize_build_errors(output: str, project_path: str) -> str:
+    """Summarize build errors for token-optimized output.
+
+    Compresses verbose build output into actionable summaries optimized for minimal
+    token usage by AI agents while preserving all critical debugging information.
+
+    Args:
+        output: Raw build output containing errors
+        project_path: Project path for relative file paths
+
+    Returns:
+        Compressed error summary string
+    """
+    if not output:
+        return output
+
+    output_len = len(output)
+
+    # Determine compression level based on output size
+    if output_len < COMPRESSION_THRESHOLDS["NONE"]:
+        return _sanitize_build_output(output)
+
+    # Parse errors using SwiftErrorParser
+    parser = SwiftErrorParser()
+    diagnostics = parser.parse_diagnostics(output)
+
+    if not diagnostics:
+        # Fallback for unparseable output
+        lines = output.strip().split("\n")
+        error_lines = [line for line in lines if "error:" in line.lower()]
+        warning_lines = [line for line in lines if "warning:" in line.lower()]
+
+        summary_parts = []
+        if error_lines:
+            summary_parts.append(f"E:{len(error_lines)}")
+        if warning_lines:
+            summary_parts.append(f"W:{len(warning_lines)}")
+
+        if summary_parts:
+            result = f"Build failed: {' '.join(summary_parts)}\n"
+            # Add first few error examples
+            for i, line in enumerate(error_lines[:3]):
+                # Extract just the error message part
+                if "error:" in line:
+                    msg = line.split("error:", 1)[1].strip()
+                    result += f"E{i + 1}:{msg[:80]}\n"
+            if len(error_lines) > 3:
+                result += f"+{len(error_lines) - 3} more errors"
+            return result
+        else:
+            return "Build failed (no errors parsed)"
+
+    # Group errors by pattern
+    error_groups = {}
+    uncategorized = []
+
+    for diag in diagnostics:
+        if diag.type != "error":
+            continue
+
+        categorized = False
+        for category, pattern in ERROR_PATTERNS.items():
+            match = pattern.search(diag.message)
+            if match:
+                if category not in error_groups:
+                    error_groups[category] = {}
+
+                # Extract key information based on category
+                if category == "ambiguous":
+                    # Pattern has two groups, use whichever matched
+                    symbol = match.group(1) or match.group(2)
+                    if symbol not in error_groups[category]:
+                        error_groups[category][symbol] = []
+                    error_groups[category][symbol].append(
+                        f"{os.path.basename(diag.file_path or 'unknown')}:{diag.line}"
+                    )
+
+                elif category == "concurrency":
+                    var_name = match.group(1)
+                    if "vars" not in error_groups[category]:
+                        error_groups[category]["vars"] = []
+                    error_groups[category]["vars"].append(var_name)
+
+                elif category == "conformance":
+                    type_name = match.group(1)
+                    protocol_name = match.group(2)
+                    key = f"{type_name}->{protocol_name}"
+                    if key not in error_groups[category]:
+                        error_groups[category][key] = []
+                    error_groups[category][key].append(
+                        f"{os.path.basename(diag.file_path or 'unknown')}:{diag.line}"
+                    )
+
+                else:
+                    # Generic grouping by first match group
+                    key = match.group(1)
+                    if key not in error_groups[category]:
+                        error_groups[category][key] = []
+                    error_groups[category][key].append(
+                        f"{os.path.basename(diag.file_path or 'unknown')}:{diag.line}"
+                    )
+
+                categorized = True
+                break
+
+        if not categorized:
+            uncategorized.append(diag)
+
+    # Build ultra-compressed summary
+    summary = parser.get_diagnostic_summary(diagnostics)
+    total_errors = summary.get("error", 0)
+    total_warnings = summary.get("warning", 0)
+
+    # Count unique files
+    unique_files = set()
+    for diag in diagnostics:
+        if diag.file_path:
+            unique_files.add(os.path.basename(diag.file_path))
+
+    if output_len > COMPRESSION_THRESHOLDS["MODERATE"]:
+        # Ultra-compressed format for very large outputs
+        result = f"{total_errors}E/{len(unique_files)}F:"
+
+        # Add compressed error summaries
+        if "ambiguous" in error_groups:
+            symbols = list(error_groups["ambiguous"].keys())[:3]
+            locations = [f"{sym}@{error_groups['ambiguous'][sym][0]}" for sym in symbols]
+            remaining = len(error_groups["ambiguous"]) - len(symbols)
+            result += f"ambiguous({len(error_groups['ambiguous'])}):{','.join(locations)}"
+            if remaining > 0:
+                result += f"+{remaining}"
+            result += ";"
+
+        if "concurrency" in error_groups and "vars" in error_groups["concurrency"]:
+            vars_list = error_groups["concurrency"]["vars"]
+            unique_vars = list(set(vars_list))[:5]
+            result += f"concurrency({len(set(vars_list))}):{','.join(unique_vars)}"
+            if len(set(vars_list)) > 5:
+                result += f"+{len(set(vars_list)) - 5}"
+            result += ";"
+
+        if "conformance" in error_groups:
+            items = list(error_groups["conformance"].items())[:2]
+            result += f"conformance({len(error_groups['conformance'])}):"
+            result += ",".join([f"{k}@{v[0]}" for k, v in items])
+            if len(error_groups["conformance"]) > 2:
+                result += f"+{len(error_groups['conformance']) - 2}"
+            result += ";"
+
+        # Add other categories briefly
+        for category in ["scope", "redeclaration", "no_member"]:
+            if category in error_groups:
+                count = len(error_groups[category])
+                first_key = list(error_groups[category].keys())[0]
+                first_loc = error_groups[category][first_key][0]
+                result += f"{category}({count}):{first_key}@{first_loc};"
+
+        if uncategorized:
+            result += f"other({len(uncategorized)})"
+
+    else:
+        # Moderate compression for medium-sized outputs
+        result = f"Build failed: {total_errors} errors in {len(unique_files)} files\n\n"
+
+        # Add grouped errors with more detail
+        if "ambiguous" in error_groups:
+            result += f"Type ambiguity ({len(error_groups['ambiguous'])} symbols):\n"
+            for _, (symbol, locations) in enumerate(list(error_groups["ambiguous"].items())[:3]):
+                result += f"  '{symbol}' @ {', '.join(locations[:2])}\n"
+            if len(error_groups["ambiguous"]) > 3:
+                result += f"  +{len(error_groups['ambiguous']) - 3} more\n"
+            result += "\n"
+
+        if "concurrency" in error_groups and "vars" in error_groups["concurrency"]:
+            unique_vars = list(set(error_groups["concurrency"]["vars"]))
+            result += f"Concurrency ({len(unique_vars)} vars):\n"
+            result += f"  Not concurrency-safe: {', '.join(unique_vars[:5])}\n"
+            if len(unique_vars) > 5:
+                result += f"  +{len(unique_vars) - 5} more\n"
+            result += "  Fix: Add @MainActor or convert to 'let'\n\n"
+
+        if "conformance" in error_groups:
+            result += f"Protocol conformance ({len(error_groups['conformance'])} issues):\n"
+            for _, (key, locations) in enumerate(list(error_groups["conformance"].items())[:2]):
+                result += f"  {key} @ {locations[0]}\n"
+            if len(error_groups["conformance"]) > 2:
+                result += f"  +{len(error_groups['conformance']) - 2} more\n"
+            result += "\n"
+
+        # Add brief summary of other errors
+        other_count = 0
+        for category in ["scope", "redeclaration", "no_member"]:
+            if category in error_groups:
+                other_count += len(error_groups[category])
+
+        if uncategorized:
+            other_count += len(uncategorized)
+
+        if other_count > 0:
+            result += f"Other errors: {other_count}\n"
+
+        if total_warnings > 0:
+            result += f"\nAlso: {total_warnings} warnings"
+
+    return result.strip()
 
 
 def _check_development_environment(
@@ -264,11 +489,17 @@ def _build_with_spm(project_path: str, timeout: int) -> dict[str, Any]:
                     project_type="spm",
                 ).model_dump()
             else:
-                # Build failed
+                # Build failed - summarize errors if output is large
+                full_output = result.stdout + result.stderr
+                if len(full_output) > COMPRESSION_THRESHOLDS["NONE"]:
+                    build_output = _summarize_build_errors(full_output, project_path)
+                else:
+                    build_output = _sanitize_build_output(full_output)
+
                 return BuildIndexResponse(
                     success=False,
                     project_path=project_path,
-                    build_output=_sanitize_build_output(result.stdout + result.stderr),
+                    build_output=build_output,
                     build_time=build_time,
                     error=f"Build failed with exit code {result.returncode}",
                     error_type=ErrorType.BUILD_ERROR,
@@ -389,11 +620,17 @@ def _build_with_xcode(
                     project_type="xcode",
                 ).model_dump()
             else:
-                # Build failed
+                # Build failed - summarize errors if output is large
+                full_output = result.stdout + result.stderr
+                if len(full_output) > COMPRESSION_THRESHOLDS["NONE"]:
+                    build_output = _summarize_build_errors(full_output, project_path)
+                else:
+                    build_output = _sanitize_build_output(full_output)
+
                 return BuildIndexResponse(
                     success=False,
                     project_path=project_path,
-                    build_output=_sanitize_build_output(result.stdout + result.stderr),
+                    build_output=build_output,
                     build_time=build_time,
                     error=f"Xcode build failed with exit code {result.returncode}",
                     error_type=ErrorType.BUILD_ERROR,

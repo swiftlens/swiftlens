@@ -851,6 +851,245 @@ Building in /private/var/folders/abc/def/T/build123
             assert case["expected_error"] in result["error"]
             assert result["error_type"] == "validation_error"
 
+    def test_error_summarization_small_output(self):
+        """Test error summarization with small output (no compression)."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Small output should pass through with just sanitization
+        small_output = """error: cannot find 'foo' in scope
+/path/to/file.swift:10:5: error: cannot find 'foo' in scope
+    foo()
+    ^~~
+"""
+        result = _summarize_build_errors(small_output, "/test/project")
+
+        # Should contain the error but with sanitized paths
+        assert "error: cannot find 'foo' in scope" in result
+        assert "<path>" in result
+        assert "/path/to/file.swift" not in result
+
+    def test_error_summarization_moderate_compression(self):
+        """Test moderate compression for medium-sized error output."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Create output with multiple error types
+        moderate_output = ""
+
+        # Add type ambiguity errors
+        for i in range(10):
+            moderate_output += f"/path/to/file{i}.swift:10:5: error: ambiguous use of 'decode'\n"
+            moderate_output += "    decode(data)\n"
+            moderate_output += "    ^~~~~~\n\n"
+
+        # Add concurrency errors
+        for i in range(8):
+            moderate_output += f"/path/to/async{i}.swift:20:9: error: reference to var 'sharedData{i}' is not concurrency-safe\n"
+            moderate_output += f"    sharedData{i} = value\n"
+            moderate_output += "    ^~~~~~~~~~~\n\n"
+
+        # Add conformance errors
+        for i in range(5):
+            moderate_output += f"/path/to/protocol{i}.swift:30:7: error: type 'MyType{i}' does not conform to protocol 'Codable'\n"
+            moderate_output += f"struct MyType{i}: Codable {{\n"
+            moderate_output += "      ^~~~~~~~\n\n"
+
+        result = _summarize_build_errors(moderate_output, "/test/project")
+
+        # Should produce moderate compression format
+        assert "Build failed:" in result
+        assert "errors in" in result
+        assert "Type ambiguity" in result
+        assert "Concurrency" in result
+        assert "Protocol conformance" in result
+        assert "'decode'" in result
+        assert "Not concurrency-safe:" in result
+        assert "Fix: Add @MainActor" in result
+
+    def test_error_summarization_ultra_compression(self):
+        """Test ultra compression for very large error output."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Create large output (over 5000 chars)
+        large_output = ""
+
+        # Add many errors to exceed threshold
+        for i in range(100):
+            large_output += f"/path/to/file{i}.swift:{i}:5: error: ambiguous use of 'process{i}'\n"
+            large_output += f"    process{i}(data)\n"
+            large_output += "    ^~~~~~~~~\n"
+            large_output += "    Multiple candidates found...\n\n"
+
+        for i in range(50):
+            large_output += f"/path/to/concurrent{i}.swift:{i}:9: error: reference to var 'state{i}' is not concurrency-safe\n"
+            large_output += f"    state{i} = newValue\n\n"
+
+        # Ensure it's over the threshold
+        assert len(large_output) > 5000
+
+        result = _summarize_build_errors(large_output, "/test/project")
+
+        # Should produce ultra-compressed format
+        assert "E/" in result  # Error count/file count format
+        assert "F:" in result
+        assert "ambiguous(" in result
+        assert "concurrency(" in result
+        assert "@" in result  # Location markers
+        assert ";" in result  # Category separators
+
+        # Should be much shorter than original
+        assert len(result) < len(large_output) / 10
+
+    def test_error_summarization_no_parseable_errors(self):
+        """Test summarization when SwiftErrorParser can't parse the output."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Create large unparseable output to trigger summarization
+        unparseable = "Build failed with errors:\n"
+
+        # Add many lines of non-standard errors to exceed 1000 chars
+        for i in range(50):
+            unparseable += f"Something went wrong at line {i}: undefined symbol _foo{i}\n"
+
+        unparseable += "Linker error: cannot link module\n"
+        unparseable += "error: compilation terminated\n"
+        unparseable += "warning: deprecated API usage\n"
+
+        # Add more to ensure it's large enough
+        for i in range(20):
+            unparseable += f"Additional error context line {i}\n"
+
+        result = _summarize_build_errors(unparseable, "/test/project")
+
+        # Should produce a summary (parser found 1 error)
+        assert "Build failed" in result
+        assert "1 errors" in result or "Other errors: 1" in result
+        # Warning line doesn't follow Swift format, so won't be parsed
+
+    def test_error_summarization_empty_output(self):
+        """Test summarization with empty output."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        result = _summarize_build_errors("", "/test/project")
+        assert result == ""
+
+    def test_error_summarization_category_patterns(self):
+        """Test that all error category patterns work correctly."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Test each category pattern
+        test_errors = """
+/path/file1.swift:10:5: error: cannot find 'myVariable' in scope
+    myVariable = 5
+    ^~~~~~~~~~
+
+/path/file2.swift:20:5: error: cannot find type 'MyType' in scope
+    let x: MyType
+           ^~~~~~
+
+/path/file3.swift:30:5: error: ambiguous use of 'decode'
+    decode(data)
+    ^~~~~~
+
+/path/file4.swift:40:5: error: reference to var 'globalState' is not concurrency-safe
+    globalState = newValue
+    ^~~~~~~~~~~
+
+/path/file5.swift:50:7: error: type 'MyClass' does not conform to protocol 'Equatable'
+class MyClass: Equatable {
+      ^~~~~~~
+
+/path/file6.swift:60:5: error: cannot use instance member 'property' on type 'MyClass'
+    MyClass.property = 5
+            ^~~~~~~~
+
+/path/file7.swift:70:5: error: declaration 'foo()' cannot override more than one superclass declaration
+    override func foo() {}
+                  ^~~
+"""
+
+        result = _summarize_build_errors(test_errors, "/test/project")
+
+        # Verify categories are detected
+        assert "scope" in result.lower() or "cannot find" in result.lower()
+        assert "ambiguous" in result.lower() or "'decode'" in result
+        assert "concurrency" in result.lower() or "concurrency-safe" in result.lower()
+        assert "conformance" in result.lower() or "protocol" in result.lower()
+
+    def test_error_summarization_with_warnings(self):
+        """Test that warnings are counted but not detailed."""
+        from swiftlens.tools.swift_build_index import _summarize_build_errors
+
+        # Create output large enough to trigger summarization (>1000 chars)
+        mixed_output = ""
+
+        # Add multiple errors to ensure we exceed the threshold
+        for i in range(10):
+            mixed_output += (
+                f"/path/file{i}.swift:{i * 10}:5: error: cannot find 'var{i}' in scope\n"
+            )
+            mixed_output += f"    var{i}()\n"
+            mixed_output += "    ^~~~\n\n"
+
+        # Add warnings
+        for i in range(5):
+            mixed_output += (
+                f"/path/file{i + 10}.swift:{i * 10}:5: warning: 'oldAPI{i}' is deprecated\n"
+            )
+            mixed_output += f"    oldAPI{i}()\n"
+            mixed_output += "    ^~~~~~~\n\n"
+
+        # Add more errors
+        for i in range(5):
+            mixed_output += (
+                f"/path/file{i + 20}.swift:{i * 10}:5: error: ambiguous use of 'process{i}'\n"
+            )
+            mixed_output += f"    process{i}(data)\n"
+            mixed_output += "    ^~~~~~~~\n\n"
+
+        result = _summarize_build_errors(mixed_output, "/test/project")
+
+        # Should mention warnings but focus on errors
+        assert "15 errors" in result  # 10 + 5 errors
+        assert "5 warnings" in result or "warnings" in result.lower()
+
+    @patch("subprocess.run")
+    def test_build_error_summarization_integration(self, mock_run):
+        """Integration test that build errors are summarized."""
+        import subprocess
+
+        self.create_test_package()
+
+        # Create large error output that would exceed token limits
+        large_error_output = ""
+        for i in range(100):
+            large_error_output += (
+                f"/Users/dev/project/file{i}.swift:{i}:5: error: ambiguous use of 'process'\n"
+            )
+            large_error_output += "    process(data)\n"
+            large_error_output += "    ^~~~~~~\n"
+            large_error_output += "Swift.process:1:5: note: found this candidate\n"
+            large_error_output += "Foundation.process:1:5: note: found this candidate\n\n"
+
+        def side_effect(*args, **kwargs):
+            if "--find" in args[0]:
+                return subprocess.CompletedProcess(args[0], 0, "/usr/bin/swift", "")
+            else:
+                # Build fails with large error output
+                return subprocess.CompletedProcess(args[0], 1, "", large_error_output)
+
+        mock_run.side_effect = side_effect
+
+        result = swift_build_index(self.test_dir)
+
+        assert result["success"] is False
+        assert result["error_type"] == ErrorType.BUILD_ERROR
+
+        # Build output should be summarized
+        build_output = result.get("build_output", "")
+        assert len(build_output) < len(large_error_output)  # Should be compressed
+        assert "E/" in build_output or "Build failed:" in build_output
+        assert "ambiguous" in build_output
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
