@@ -28,22 +28,7 @@ You may use SwiftLens for free if:
 
 ## 🔑 How to Get a Commercial License
 
-To use SwiftLens commercially, choose one of the following:
-
-### 1. **Hosted Pro Plan**
-
-Subscribe at [https://swiftlens.tools/pro](https://swiftlens.tools/pro)  
-You’ll receive:
-
-- Pro features (multi-project, faster indexing, no rate limits)
-- API key for use in Claude or custom agents
-
-### 2. **Enterprise Self-Hosted License**
-
-If you want to run SwiftLens on your own infrastructure:
-
-- Contact: [team@swiftlens.tools](mailto:team@swiftlens.tools)
-- We’ll provide pricing and a commercial license
+To use SwiftLens commercially please contact us at license@swiftlens.tools
 
 ---
 
